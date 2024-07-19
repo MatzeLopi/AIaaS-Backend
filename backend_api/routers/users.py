@@ -12,7 +12,8 @@ from sqlalchemy.orm import Session
 
 # Custom modules
 from ..constants import ACCESS_TOKEN_EXPIRE_MINUTES
-from ..backend import crud, schemas
+from ..backend import schemas
+from ..backend.crud import users
 from ..backend import dependencies
 from ..backend.dependencies import Token, get_db
 
@@ -28,7 +29,7 @@ def create_user_endpoint(
     db: Session = Depends(get_db),
 ):
     try:
-        message = crud.create_user(db, user, background_task)
+        message = users.create_user(db, user, background_task)
     except Exception as e:
         logger.error(
             f"Could not create user: {e}. Trackeback: {traceback.format_exc()}"
@@ -41,7 +42,7 @@ def create_user_endpoint(
 @router.get("/verify_email/{verify_token}")
 def verify_email(verify_token: str, db: Session = Depends(get_db)) -> Token:
     try:
-        user = crud.verify_email(db, verify_token)
+        user = users.verify_email(db, verify_token)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid verification token")
     else:
@@ -78,9 +79,9 @@ def delete_user(
     Raises:
         HTTPException: Raised if the password is incorrect and user is not deleted.
     """
-    user = crud.get_user(db, current_user.username)
+    user = users.get_user(db, current_user.username)
 
     if dependencies.verify_password(password, user.hashed_password):
-        return crud.delete_user(db, current_user.username)
+        return users.delete_user(db, current_user.username)
     else:
         raise HTTPException(status_code=400, detail="Incorrect password")
