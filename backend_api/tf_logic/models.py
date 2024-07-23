@@ -19,10 +19,14 @@ class LayerType(Enum):
     maxpool1d = keras.layers.MaxPool1D
     maxpool2d = keras.layers.MaxPool2D
     maxpool3d = keras.layers.MaxPool3D
+    golbal_average_pooling1d = keras.layers.GlobalAveragePooling1D
+    global_average_pooling2d = keras.layers.GlobalAveragePooling2D
+    global_average_pooling3d = keras.layers.GlobalAveragePooling3D
     flatten = keras.layers.Flatten
     dropout = keras.layers.Dropout
     batchnorm = keras.layers.BatchNormalization
     concat = keras.layers.Concatenate
+    add = keras.layers.Add
 
 
 class Layer:
@@ -99,7 +103,7 @@ def create_graph(
     visited: set[str],
     output_uuids: set[str],
     *,
-    connected_output: keras.layers.Layer = None,
+    connected_output: list[keras.layers.Layer] | None = None,
 ) -> keras.layers.Layer:
     """Create the model Graph from any starting layer by traversing the JSON object which represents the model.
 
@@ -118,7 +122,7 @@ def create_graph(
         print(layer_name, layer_json.get("uuid"))
         raise LayerJSONError("Layer name and UUID do not match.")
 
-    if connected_output is not None:
+    if connected_output is None:
         connected_output = []
 
     # Get the uuid of the layer
@@ -156,7 +160,6 @@ def create_graph(
                     output_uuids,
                     connected_output=connected_output,
                 )
-
 
     next_uuids = layer_json.get("output")
 
@@ -225,13 +228,149 @@ def create_graph(
 
         # Output is multiple layers
         else:
+            for next_uuid in next_uuids:
+                if next_uuid in visited:
+                    continue
+
+                next_layer: keras.layers.Layer = all_layers[
+                    next_uuid
+                ]  # Get the next layer
+                next_layer_json = layers_json[
+                    next_uuid
+                ]  # Get the JSON object of the next layer
+                inputs: list[str] = next_layer_json.get(
+                    "input"
+                )  # Get the inputs of the next layer
+
+                # Check if all inputs are visited
+                if set(inputs).issubset(visited):
+
+                    # Check if next layer has multiple inputs
+                    if inputs is not None and len(inputs) > 1:
+                        layers = [all_layers[input_] for input_ in inputs]
+
+                        next_layer = next_layer(layers)  # Concat layer
+                        all_layers[next_uuid] = next_layer
+                    else:
+                        next_layer = next_layer(layer)
+                        all_layers[next_uuid] = next_layer
+                    visited.add(next_uuid)
+
+                    return create_graph(
+                        next_layer,
+                        next_layer_json,
+                        layers_json,
+                        all_layers,
+                        visited,
+                        output_uuids,
+                        connected_output=connected_output,
+                    )
+
+            # Some inputs have not been visited. Thus the network graph is not yet instantiated.
+            # Walk the inputs which are not connected back until we reach layer to which we can connect or new input layer.
+            else:
+                # Check each input if it is visited.
+                for input_ in inputs:
+                    # If not visited, recursively create the graph.
+                    if input_ not in visited:
+                        previous_layer = all_layers[input_]
+                        previous_layer_json = layers_json[input_]
+
+                        return create_graph(
+                            previous_layer,
+                            previous_layer_json,
+                            layers_json,
+                            all_layers,
+                            visited,
+                            output_uuids,
+                            connected_output=connected_output,
+                        )
+
+                    # Else continue to next input.
+                    else:
+                        continue
+
+    # If output layer is reached
+    else:
+        if isinstance(layer, keras.layers.Layer):
             pass
 
-    else:
-        return layer
+        elif layer.name in [
+            l.name for l in connected_output
+        ]:  # Fix this since symbolic tensors are not hashable.
+            pass
+        else:
+            connected_output.append(layer)
 
-def main():
-    layers_json = {
+        connected_uuids: list[str] = [
+            out_layer.name.split("/")[0] for out_layer in connected_output
+        ]
+
+        if set(connected_uuids) == output_uuids:
+            return connected_output
+        else:
+            for output_uuid in output_uuids:
+                if output_uuid in connected_uuids:
+                    continue
+                else:
+                    layer_json = layers_json[output_uuid]
+                    inputs = layer_json.get("input")
+
+                    input_, *_ = inputs
+                    previous_layer = all_layers[input_]
+                    previous_layer_json = layers_json[input_]
+                    return create_graph(
+                        previous_layer,
+                        previous_layer_json,
+                        layers_json,
+                        all_layers,
+                        visited,
+                        output_uuids,
+                        connected_output=connected_output,
+                    )
+
+
+def main(layers_json):
+    tf_layers:dict[str,keras.layers.Layer] = {}
+    tf_inputs:dict[str,keras.layers.Layer] = {}
+    tf_outputs:dict[str,keras.layers.Layer] = {}
+
+    for lid, layer in layers_json.items():
+        if layer.get("layer_type") == "Input":
+            tf_inputs[lid] = layer_from_json(layer)
+        elif layer.get("layer_type") == "Output":
+            tf_outputs[lid] = layer_from_json(layer)
+        elif layer.get("layer_type") == "Hidden":
+            tf_layers[lid] = layer_from_json(layer)
+        else:
+            raise ValueError("Layer type not found.")
+
+    all_layers:dict[str,keras.layers.Layer] = {**tf_inputs, **tf_layers, **tf_outputs}
+    print(len(all_layers))
+    print(len(tf_inputs))
+    print(len(tf_layers))
+    print(len(tf_outputs))
+
+    visited = set()
+    input_layer, *_ = tf_layers.values()
+    input_layer_json = layers_json["layer_uuid2"]
+    output_layers = create_graph(
+        input_layer,
+        input_layer_json,
+        layers_json,
+        all_layers,
+        visited,
+        set(tf_outputs.keys()),
+    )
+
+    model = keras.Model(inputs=tf_inputs.values(), outputs=output_layers)
+
+    print(model.summary())
+
+
+if __name__ == "__main__":
+
+    fan_in_out = {
         "layer_uuid1": {
             "tf_type": "input_layer",
             "kwargs": {"shape": 784, "name": "title", "name": "layer_uuid1"},
@@ -277,7 +416,7 @@ def main():
             "kwargs": {"units": 128, "activation": "relu", "name": "layer_uuid14"},
             "layer_type": "Hidden",
             "input": ["layer_uuid13"],
-            "output": ["layer_uuid15"],
+            "output": ["layer_uuid15", "layer_uuid16"],
             "uuid": "layer_uuid14",
         },
         "layer_uuid15": {
@@ -288,39 +427,195 @@ def main():
             "output": None,
             "uuid": "layer_uuid15",
         },
+        "layer_uuid16": {
+            "tf_type": "dense",
+            "kwargs": {"units": 10, "activation": "softmax", "name": "layer_uuid16"},
+            "layer_type": "Output",
+            "input": ["layer_uuid14"],
+            "output": None,
+            "uuid": "layer_uuid16",
+        },
     }
+    residual = {
+        "layer_uuid1": {
+            "tf_type": "input_layer",
+            "kwargs": {"shape": [32, 32, 3], "name": "layer_uuid1"},
+            "layer_type": "Input",
+            "input": None,
+            "output": ["layer_uuid2"],
+            "uuid": "layer_uuid1",
+        },
+        "layer_uuid2": {
+            "tf_type": "conv2d",
+            "kwargs": {
+                "filters": 32,
+                "kernel_size": 3,
+                "activation": "relu",
+                "name": "layer_uuid2",
+            },
+            "layer_type": "Hidden",
+            "input": ["layer_uuid1"],
+            "output": ["layer_uuid3"],
+            "uuid": "layer_uuid2",
+        },
+        "layer_uuid3": {
+            "tf_type": "conv2d",
+            "kwargs": {
+                "filters": 64,
+                "kernel_size": 3,
+                "activation": "relu",
+                "name": "layer_uuid3",
+            },
+            "layer_type": "Hidden",
+            "input": ["layer_uuid2"],
+            "output": ["layer_uuid4"],
+            "uuid": "layer_uuid3",
+        },
+        "layer_uuid4": {
+            "tf_type": "maxpool2d",
+            "kwargs": {"pool_size": 3, "name": "layer_uuid4"},
+            "layer_type": "Hidden",
+            "input": ["layer_uuid3"],
+            "output": ["layer_uuid5"],
+            "uuid": "layer_uuid4",
+        },
+        "layer_uuid5": {
+            "tf_type": "conv2d",
+            "kwargs": {
+                "filters": 64,
+                "kernel_size": 3,
+                "activation": "relu",
+                "padding": "same",
+                "name": "layer_uuid5",
+            },
+            "layer_type": "Hidden",
+            "input": ["layer_uuid4"],
+            "output": ["layer_uuid6"],
+            "uuid": "layer_uuid5",
+        },
+        "layer_uuid6": {
+            "tf_type": "conv2d",
+            "kwargs": {
+                "filters": 64,
+                "kernel_size": 3,
+                "activation": "relu",
+                "padding": "same",
+                "name": "layer_uuid6",
+            },
+            "layer_type": "Hidden",
+            "input": ["layer_uuid5"],
+            "output": ["layer_uuid7"],
+            "uuid": "layer_uuid6",
+        },
+        "layer_uuid7": {
+            "tf_type": "add",
+            "kwargs": {"name": "layer_uuid7"},
+            "layer_type": "Hidden",
+            "input": ["layer_uuid6", "layer_uuid4"],
+            "output": ["layer_uuid8"],
+            "uuid": "layer_uuid7",
+        },
+        "layer_uuid8": {
+            "tf_type": "conv2d",
+            "kwargs": {
+                "filters": 64,
+                "kernel_size": 3,
+                "activation": "relu",
+                "padding": "same",
+                "name": "layer_uuid8",
+            },
+            "layer_type": "Hidden",
+            "input": ["layer_uuid7"],
+            "output": ["layer_uuid9"],
+            "uuid": "layer_uuid8",
+        },
+        "layer_uuid9": {
+            "tf_type": "conv2d",
+            "kwargs": {
+                "filters": 64,
+                "kernel_size": 3,
+                "activation": "relu",
+                "padding": "same",
+                "name": "layer_uuid9",
+            },
+            "layer_type": "Hidden",
+            "input": ["layer_uuid8"],
+            "output": ["layer_uuid10"],
+            "uuid": "layer_uuid9",
+        },
+        "layer_uuid10": {
+            "tf_type": "add",
+            "kwargs": {"name": "layer_uuid10"},
+            "layer_type": "Hidden",
+            "input": ["layer_uuid9", "layer_uuid7"],
+            "output": ["layer_uuid11"],
+            "uuid": "layer_uuid10",
+        },
+        "layer_uuid11": {
+            "tf_type": "conv2d",
+            "kwargs": {
+                "filters": 64,
+                "kernel_size": 3,
+                "activation": "relu",
+                "name": "layer_uuid11",
+            },
+            "layer_type": "Hidden",
+            "input": ["layer_uuid10"],
+            "output": ["layer_uuid12"],
+            "uuid": "layer_uuid11",
+        },
+        "layer_uuid12": {
+            "tf_type": "global_average_pooling2d",
+            "kwargs": {"name": "layer_uuid12"},
+            "layer_type": "Hidden",
+            "input": ["layer_uuid11"],
+            "output": ["layer_uuid13"],
+            "uuid": "layer_uuid12",
+        },
+        "layer_uuid13": {
+            "tf_type": "dense",
+            "kwargs": {"units": 256, "activation": "relu", "name": "layer_uuid13"},
+            "layer_type": "Hidden",
+            "input": ["layer_uuid12"],
+            "output": ["layer_uuid14"],
+            "uuid": "layer_uuid13",
+        },
+        "layer_uuid14": {
+            "tf_type": "dropout",
+            "kwargs": {"rate": 0.5, "name": "layer_uuid14"},
+            "layer_type": "Hidden",
+            "input": ["layer_uuid13"],
+            "output": ["layer_uuid15"],
+            "uuid": "layer_uuid14",
+        },
+        "layer_uuid15": {
+            "tf_type": "dense",
+            "kwargs": {"units": 10, "name": "layer_uuid15"},
+            "layer_type": "Output",
+            "input": ["layer_uuid14"],
+            "output": None,
+            "uuid": "layer_uuid15",
+        },
+    }
+    main(residual)
+    inputs = keras.Input(shape=(32, 32, 3), name="img")
+    x = keras.layers.Conv2D(32, 3, activation="relu")(inputs)
+    x = keras.layers.Conv2D(64, 3, activation="relu")(x)
+    block_1_output = keras.layers.MaxPooling2D(3)(x)
 
-    tf_layers = {}
-    tf_inputs = {}
-    tf_outputs = {}
+    x = keras.layers.Conv2D(64, 3, activation="relu", padding="same")(block_1_output)
+    x = keras.layers.Conv2D(64, 3, activation="relu", padding="same")(x)
+    block_2_output = keras.layers.add([x, block_1_output])
 
-    for lid, layer in layers_json.items():
-        if layer.get("layer_type") == "Input":
-            tf_inputs[lid] = layer_from_json(layer)
-        elif layer.get("layer_type") == "Output":
-            tf_outputs[lid] = layer_from_json(layer)
-        elif layer.get("layer_type") == "Hidden":
-            tf_layers[lid] = layer_from_json(layer)
-        else:
-            raise ValueError("Layer type not found.")
+    x = keras.layers.Conv2D(64, 3, activation="relu", padding="same")(block_2_output)
+    x = keras.layers.Conv2D(64, 3, activation="relu", padding="same")(x)
+    block_3_output = keras.layers.add([x, block_2_output])
 
-    all_layers = {**tf_inputs, **tf_layers, **tf_outputs}
-    print(len(all_layers))
-    print(len(tf_inputs))
-    print(len(tf_layers))
-    print(len(tf_outputs))
+    x = keras.layers.Conv2D(64, 3, activation="relu")(block_3_output)
+    x = keras.layers.GlobalAveragePooling2D()(x)
+    x = keras.layers.Dense(256, activation="relu")(x)
+    x = keras.layers.Dropout(0.5)(x)
+    outputs = keras.layers.Dense(10)(x)
 
-    visited = set()
-    input_layer, *_ = tf_layers.values()
-    input_layer_json = layers_json["layer_uuid2"]
-    output_layer = create_graph(input_layer,input_layer_json, layers_json, all_layers, visited, set(tf_outputs.keys())
-    )
-
-    model = keras.Model(inputs=tf_inputs.values(), outputs=output_layer)
-
-
+    model = keras.Model(inputs, outputs, name="toy_resnet")
     print(model.summary())
-
-
-if __name__ == "__main__":
-    main()
