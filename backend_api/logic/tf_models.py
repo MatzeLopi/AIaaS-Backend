@@ -1,7 +1,10 @@
+from uuid import uuid4
 from typing import Any
+from enum import Enum
+
 import tensorflow as tf
 from tensorflow import keras
-from enum import Enum
+from pathlib import Path
 
 TF_ENABLE_ONEDNN_OPTS = 0
 
@@ -13,18 +16,18 @@ class LayerJSONError(Exception):
 class LayerType(Enum):
 
     dense = keras.layers.Dense
-    conv1d = keras.layers.Conv1D
-    conv2d = keras.layers.Conv2D
-    conv3d = keras.layers.Conv3D
-    maxpool1d = keras.layers.MaxPool1D
-    maxpool2d = keras.layers.MaxPool2D
-    maxpool3d = keras.layers.MaxPool3D
-    golbal_average_pooling1d = keras.layers.GlobalAveragePooling1D
-    global_average_pooling2d = keras.layers.GlobalAveragePooling2D
-    global_average_pooling3d = keras.layers.GlobalAveragePooling3D
+    conv_1d = keras.layers.Conv1D
+    conv_2d = keras.layers.Conv2D
+    conv_3d = keras.layers.Conv3D
+    max_pool_1d = keras.layers.MaxPool1D
+    max_pool_2d = keras.layers.MaxPool2D
+    max_pool_3d = keras.layers.MaxPool3D
+    golbal_average_pooling_1d = keras.layers.GlobalAveragePooling1D
+    global_average_pooling_2d = keras.layers.GlobalAveragePooling2D
+    global_average_pooling_3d = keras.layers.GlobalAveragePooling3D
     flatten = keras.layers.Flatten
     dropout = keras.layers.Dropout
-    batchnorm = keras.layers.BatchNormalization
+    batch_norm = keras.layers.BatchNormalization
     concat = keras.layers.Concatenate
     add = keras.layers.Add
 
@@ -328,7 +331,9 @@ def create_graph(
                         output_uuids,
                         connected_output=connected_output,
                     )
-def create_model(layers_json: dict[str, Any]) -> keras.Model:
+                
+
+def create_model(layers_json: dict[str, Any]) -> str:
     """ Create a model from a JSON object.
 
     Args:
@@ -338,7 +343,7 @@ def create_model(layers_json: dict[str, Any]) -> keras.Model:
         ValueError: Raises an error if the layer type is not found.
 
     Returns:
-        keras.Model: TensorFlow model.
+        str: Path to the saved model.
     """
     tf_layers: dict[str, keras.layers.Layer] = {}
     tf_inputs: dict[str, keras.layers.Layer] = {}
@@ -374,263 +379,15 @@ def create_model(layers_json: dict[str, Any]) -> keras.Model:
 
     model = keras.Model(inputs=tf_inputs.values(), outputs=output_layers)
 
-    print(model.summary())
+    model_id = uuid4()
+    parent_folder = Path(__file__.parent).parent
 
-    return model
-
-def main(layers_json):
-    model = create_model(layers_json)
-    model.save("model.h5")
-
-
-if __name__ == "__main__":
-
-    fan_in_out = {
-        "layer_uuid1": {
-            "tf_type": "input_layer",
-            "kwargs": {"shape": 784, "name": "title", "name": "layer_uuid1"},
-            "layer_type": "Input",
-            "input": None,
-            "output": ["layer_uuid2"],
-            "uuid": "layer_uuid1",
-        },
-        "layer_uuid2": {
-            "tf_type": "dense",
-            "kwargs": {"units": 128, "activation": "relu", "name": "layer_uuid2"},
-            "layer_type": "Hidden",
-            "input": ["layer_uuid1"],
-            "output": ["layer_uuid13"],
-            "uuid": "layer_uuid2",
-        },
-        "layer_uuid11": {
-            "tf_type": "input_layer",
-            "kwargs": {"shape": 784, "name": "title", "name": "layer_uuid11"},
-            "layer_type": "Input",
-            "input": None,
-            "output": ["layer_uuid12"],
-            "uuid": "layer_uuid11",
-        },
-        "layer_uuid12": {
-            "tf_type": "dense",
-            "kwargs": {"units": 128, "activation": "relu", "name": "layer_uuid12"},
-            "layer_type": "Hidden",
-            "input": ["layer_uuid11"],
-            "output": ["layer_uuid13"],
-            "uuid": "layer_uuid12",
-        },
-        "layer_uuid13": {
-            "tf_type": "concat",
-            "kwargs": {"name": "layer_uuid13"},
-            "layer_type": "Hidden",
-            "input": ["layer_uuid12", "layer_uuid2"],
-            "output": ["layer_uuid14"],
-            "uuid": "layer_uuid13",
-        },
-        "layer_uuid14": {
-            "tf_type": "dense",
-            "kwargs": {"units": 128, "activation": "relu", "name": "layer_uuid14"},
-            "layer_type": "Hidden",
-            "input": ["layer_uuid13"],
-            "output": ["layer_uuid15", "layer_uuid16"],
-            "uuid": "layer_uuid14",
-        },
-        "layer_uuid15": {
-            "tf_type": "dense",
-            "kwargs": {"units": 10, "activation": "softmax", "name": "layer_uuid15"},
-            "layer_type": "Output",
-            "input": ["layer_uuid14"],
-            "output": None,
-            "uuid": "layer_uuid15",
-        },
-        "layer_uuid16": {
-            "tf_type": "dense",
-            "kwargs": {"units": 10, "activation": "softmax", "name": "layer_uuid16"},
-            "layer_type": "Output",
-            "input": ["layer_uuid14"],
-            "output": None,
-            "uuid": "layer_uuid16",
-        },
-    }
-    residual = {
-        "layer_uuid1": {
-            "tf_type": "input_layer",
-            "kwargs": {"shape": [32, 32, 3], "name": "layer_uuid1"},
-            "layer_type": "Input",
-            "input": None,
-            "output": ["layer_uuid2"],
-            "uuid": "layer_uuid1",
-        },
-        "layer_uuid2": {
-            "tf_type": "conv2d",
-            "kwargs": {
-                "filters": 32,
-                "kernel_size": 3,
-                "activation": "relu",
-                "name": "layer_uuid2",
-            },
-            "layer_type": "Hidden",
-            "input": ["layer_uuid1"],
-            "output": ["layer_uuid3"],
-            "uuid": "layer_uuid2",
-        },
-        "layer_uuid3": {
-            "tf_type": "conv2d",
-            "kwargs": {
-                "filters": 64,
-                "kernel_size": 3,
-                "activation": "relu",
-                "name": "layer_uuid3",
-            },
-            "layer_type": "Hidden",
-            "input": ["layer_uuid2"],
-            "output": ["layer_uuid4"],
-            "uuid": "layer_uuid3",
-        },
-        "layer_uuid4": {
-            "tf_type": "maxpool2d",
-            "kwargs": {"pool_size": 3, "name": "layer_uuid4"},
-            "layer_type": "Hidden",
-            "input": ["layer_uuid3"],
-            "output": ["layer_uuid5"],
-            "uuid": "layer_uuid4",
-        },
-        "layer_uuid5": {
-            "tf_type": "conv2d",
-            "kwargs": {
-                "filters": 64,
-                "kernel_size": 3,
-                "activation": "relu",
-                "padding": "same",
-                "name": "layer_uuid5",
-            },
-            "layer_type": "Hidden",
-            "input": ["layer_uuid4"],
-            "output": ["layer_uuid6"],
-            "uuid": "layer_uuid5",
-        },
-        "layer_uuid6": {
-            "tf_type": "conv2d",
-            "kwargs": {
-                "filters": 64,
-                "kernel_size": 3,
-                "activation": "relu",
-                "padding": "same",
-                "name": "layer_uuid6",
-            },
-            "layer_type": "Hidden",
-            "input": ["layer_uuid5"],
-            "output": ["layer_uuid7"],
-            "uuid": "layer_uuid6",
-        },
-        "layer_uuid7": {
-            "tf_type": "add",
-            "kwargs": {"name": "layer_uuid7"},
-            "layer_type": "Hidden",
-            "input": ["layer_uuid6", "layer_uuid4"],
-            "output": ["layer_uuid8"],
-            "uuid": "layer_uuid7",
-        },
-        "layer_uuid8": {
-            "tf_type": "conv2d",
-            "kwargs": {
-                "filters": 64,
-                "kernel_size": 3,
-                "activation": "relu",
-                "padding": "same",
-                "name": "layer_uuid8",
-            },
-            "layer_type": "Hidden",
-            "input": ["layer_uuid7"],
-            "output": ["layer_uuid9"],
-            "uuid": "layer_uuid8",
-        },
-        "layer_uuid9": {
-            "tf_type": "conv2d",
-            "kwargs": {
-                "filters": 64,
-                "kernel_size": 3,
-                "activation": "relu",
-                "padding": "same",
-                "name": "layer_uuid9",
-            },
-            "layer_type": "Hidden",
-            "input": ["layer_uuid8"],
-            "output": ["layer_uuid10"],
-            "uuid": "layer_uuid9",
-        },
-        "layer_uuid10": {
-            "tf_type": "add",
-            "kwargs": {"name": "layer_uuid10"},
-            "layer_type": "Hidden",
-            "input": ["layer_uuid9", "layer_uuid7"],
-            "output": ["layer_uuid11"],
-            "uuid": "layer_uuid10",
-        },
-        "layer_uuid11": {
-            "tf_type": "conv2d",
-            "kwargs": {
-                "filters": 64,
-                "kernel_size": 3,
-                "activation": "relu",
-                "name": "layer_uuid11",
-            },
-            "layer_type": "Hidden",
-            "input": ["layer_uuid10"],
-            "output": ["layer_uuid12"],
-            "uuid": "layer_uuid11",
-        },
-        "layer_uuid12": {
-            "tf_type": "global_average_pooling2d",
-            "kwargs": {"name": "layer_uuid12"},
-            "layer_type": "Hidden",
-            "input": ["layer_uuid11"],
-            "output": ["layer_uuid13"],
-            "uuid": "layer_uuid12",
-        },
-        "layer_uuid13": {
-            "tf_type": "dense",
-            "kwargs": {"units": 256, "activation": "relu", "name": "layer_uuid13"},
-            "layer_type": "Hidden",
-            "input": ["layer_uuid12"],
-            "output": ["layer_uuid14"],
-            "uuid": "layer_uuid13",
-        },
-        "layer_uuid14": {
-            "tf_type": "dropout",
-            "kwargs": {"rate": 0.5, "name": "layer_uuid14"},
-            "layer_type": "Hidden",
-            "input": ["layer_uuid13"],
-            "output": ["layer_uuid15"],
-            "uuid": "layer_uuid14",
-        },
-        "layer_uuid15": {
-            "tf_type": "dense",
-            "kwargs": {"units": 10, "name": "layer_uuid15"},
-            "layer_type": "Output",
-            "input": ["layer_uuid14"],
-            "output": None,
-            "uuid": "layer_uuid15",
-        },
-    }
-    main(residual)
-    inputs = keras.Input(shape=(32, 32, 3), name="img")
-    x = keras.layers.Conv2D(32, 3, activation="relu")(inputs)
-    x = keras.layers.Conv2D(64, 3, activation="relu")(x)
-    block_1_output = keras.layers.MaxPooling2D(3)(x)
-
-    x = keras.layers.Conv2D(64, 3, activation="relu", padding="same")(block_1_output)
-    x = keras.layers.Conv2D(64, 3, activation="relu", padding="same")(x)
-    block_2_output = keras.layers.add([x, block_1_output])
-
-    x = keras.layers.Conv2D(64, 3, activation="relu", padding="same")(block_2_output)
-    x = keras.layers.Conv2D(64, 3, activation="relu", padding="same")(x)
-    block_3_output = keras.layers.add([x, block_2_output])
-
-    x = keras.layers.Conv2D(64, 3, activation="relu")(block_3_output)
-    x = keras.layers.GlobalAveragePooling2D()(x)
-    x = keras.layers.Dense(256, activation="relu")(x)
-    x = keras.layers.Dropout(0.5)(x)
-    outputs = keras.layers.Dense(10)(x)
-
-    model = keras.Model(inputs, outputs, name="toy_resnet")
-    print(model.summary())
+    # Check if the model folder exists
+    model_folder = parent_folder / "models"
+    if not model_folder.exists():
+        model_folder.mkdir()
+    
+    # Save the model
+    model.save(model_folder / f"{model_id}.h5") 
+    
+    return model_folder / f"{model_id}.h5"

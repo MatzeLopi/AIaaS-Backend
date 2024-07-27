@@ -7,7 +7,7 @@ from sqlalchemy import (
     DateTime,
     UniqueConstraint,
     Index,
-    
+    Integer,
 )
 
 
@@ -16,7 +16,7 @@ from .database import Base
 
 
 class User(Base):
-    """ Model for storing user data.
+    """Model for storing user data.
 
     Attributes:
         username (str): Username of the user.
@@ -57,3 +57,32 @@ class User(Base):
 
     def __repr__(self):
         return f"<User(username='{self.username}', email='{self.email}', full_name='{self.full_name}')>"
+
+
+class UserTable(Base):
+    """ Model for storing metadata about the tables created by the user.
+
+    Attributes:
+        username (str): Username of the user.
+        table_name (str): Name of the table created by the user.
+        created_at (datetime): Date and time when the table was created.
+        updated_at (datetime): Date and time when the table was last updated.
+    """
+    __tablename__ = "user_tables"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(255), nullable=False)
+    table_name = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint("username", "table_name", name="uq_username_table_name"),
+        Index("idx_user_tables_username", "username"),
+        Index("idx_user_tables_table_name", "table_name"),
+    )
+
+    def __repr__(self):
+        return (
+            f"<UserTable(username='{self.username}', table_name='{self.table_name}')>"
+        )
