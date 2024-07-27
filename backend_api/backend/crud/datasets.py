@@ -5,16 +5,16 @@ from uuid import uuid4
 
 import polars as pl
 
-from fastapi import BackgroundTasks, UploadFile, HTTPException
+from fastapi import UploadFile, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from .. import models
+from .. import models, schemas
 from ...constants import CHUNK_SIZE
 
 
 def create_table_from_file(
-    db: Session, schema:dict[str,str], user: models.User
+    db: Session, schema:dict[str,str], user: schemas.UserBase
 ) -> str:
     """Create a table in the database.
 
