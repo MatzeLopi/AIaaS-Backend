@@ -13,7 +13,8 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from .database import SessionLocal
-from . import crud, models, schemas
+from . import models, schemas
+from .crud.users import get_user
 from ..constants import ALGORITHM
 
 
@@ -119,7 +120,7 @@ def authenticate_user(username: str, password: str, db: Session) -> models.User:
     )
     logger.debug(f"Authenticating user: {username}")
     try:
-        user: models.User = crud.get_user(db, username)
+        user: models.User = get_user(db, username)
     except ValueError:
         logger.debug(f"User not found: {username}")
         raise auth_error
@@ -181,7 +182,7 @@ async def get_current_user(
         raise credentials_exception
 
     try:
-        user = crud.get_user(db, username=token_data.username)
+        user = get_user(db, username=token_data.username)
     except ValueError:
         logger.debug(f"User not found: {token_data.username}")
         raise credentials_exception

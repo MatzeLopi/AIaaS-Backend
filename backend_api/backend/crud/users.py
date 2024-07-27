@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 from pydantic import EmailStr
 
-from . import models, schemas
+from .. import models, schemas
 from ..utils import get_password_hash, generate_verification_token, send_email, retry
 from ...constants import DBError 
 

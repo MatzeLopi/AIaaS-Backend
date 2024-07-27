@@ -21,7 +21,7 @@ from .backend.dependencies import (
     Token,
 )
 
-from .routers import users, stocks, internal
+from .routers import users, internal
 
 models.Base.metadata.create_all(bind=engine)
 logging.basicConfig(level=logging.DEBUG)
@@ -30,7 +30,6 @@ logger = logging.getLogger("backend_api")
 
 app = FastAPI(title="AIaaS API", version="0.1.0")
 app.include_router(users.router)
-app.include_router(stocks.router)
 app.include_router(internal.router)
 
 

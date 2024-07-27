@@ -328,12 +328,21 @@ def create_graph(
                         output_uuids,
                         connected_output=connected_output,
                     )
+def create_model(layers_json: dict[str, Any]) -> keras.Model:
+    """ Create a model from a JSON object.
 
+    Args:
+        layers_json (dict[str, Any]): JSON object representing the model.
 
-def main(layers_json):
-    tf_layers:dict[str,keras.layers.Layer] = {}
-    tf_inputs:dict[str,keras.layers.Layer] = {}
-    tf_outputs:dict[str,keras.layers.Layer] = {}
+    Raises:
+        ValueError: Raises an error if the layer type is not found.
+
+    Returns:
+        keras.Model: TensorFlow model.
+    """
+    tf_layers: dict[str, keras.layers.Layer] = {}
+    tf_inputs: dict[str, keras.layers.Layer] = {}
+    tf_outputs: dict[str, keras.layers.Layer] = {}
 
     for lid, layer in layers_json.items():
         if layer.get("layer_type") == "Input":
@@ -345,7 +354,7 @@ def main(layers_json):
         else:
             raise ValueError("Layer type not found.")
 
-    all_layers:dict[str,keras.layers.Layer] = {**tf_inputs, **tf_layers, **tf_outputs}
+    all_layers: dict[str, keras.layers.Layer] = {**tf_inputs, **tf_layers, **tf_outputs}
     print(len(all_layers))
     print(len(tf_inputs))
     print(len(tf_layers))
@@ -366,6 +375,12 @@ def main(layers_json):
     model = keras.Model(inputs=tf_inputs.values(), outputs=output_layers)
 
     print(model.summary())
+
+    return model
+
+def main(layers_json):
+    model = create_model(layers_json)
+    model.save("model.h5")
 
 
 if __name__ == "__main__":
