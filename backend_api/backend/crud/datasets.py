@@ -95,3 +95,14 @@ def insert_csv(
             raise HTTPException(status_code=400, detail="Could not insert data")
         else:
             return True
+
+def get_available_datasets(user: schemas.UserBase) -> list[models.UserTable]:
+    """Get all available datasets.
+    
+    Args:
+        user (schemas.UserBase): User object.
+
+    Returns:
+        list[models.UserTable]: List of available datasets.
+    """
+    return models.UserTable.query.filter_by(username=user.username).all()

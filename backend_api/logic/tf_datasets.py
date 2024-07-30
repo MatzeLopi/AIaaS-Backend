@@ -1,11 +1,13 @@
 """ Infer Schema from CSV file. """
 
-
 import polars as pl
 from polars.datatypes import DataType
 from fastapi import UploadFile
 
-def infer_schema(data: UploadFile, has_headers: bool, sep: str = ",") -> dict[str, DataType]:
+
+def infer_schema(
+    data: UploadFile, has_headers: bool, sep: str = ","
+) -> dict[str, DataType]:
     """Infer the schema of a CSV file.
 
     Args:
@@ -16,12 +18,24 @@ def infer_schema(data: UploadFile, has_headers: bool, sep: str = ",") -> dict[st
     Returns:
         dict: Schema of the CSV file.
     """
-    sample_df = pl.read_csv(data.file, has_header=has_headers, sep=sep, n_rows=100, n_threads=1, infer_schema_length=100)
+    sample_df = pl.read_csv(
+        data.file,
+        has_header=has_headers,
+        separator=sep,
+        n_rows=100,
+        n_threads=1,
+        infer_schema= True,
+        infer_schema_length=100,
+        truncate_ragged_lines=True,
+    )
     schema = sample_df.collect_schema()
-
+    print("-" * 22 , "Schema", "-" * 22)
+    print(schema)
+    print("-" * 50)
     return schema
 
-def schema_to_sqlschema(schema: dict[str, DataType]) -> dict[str,str]:
+
+def schema_to_sqlschema(schema: dict[str, DataType]) -> dict[str, str]:
     """Convert the schema to SQL schema.
 
     Args:
@@ -44,5 +58,5 @@ def schema_to_sqlschema(schema: dict[str, DataType]) -> dict[str,str]:
             sql_schema[name] = "BOOLEAN"
         else:
             sql_schema[name] = "TEXT"
-        
+
     return sql_schema

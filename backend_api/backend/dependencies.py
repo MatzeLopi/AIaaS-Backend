@@ -11,8 +11,9 @@ from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer
 
 from sqlalchemy.orm import Session
+from asyncpg import connect
 
-from .database import SessionLocal
+from .database import SessionLocal, DB_URL
 from . import models, schemas
 from .crud.users import get_user
 from ..constants import ALGORITHM
@@ -39,6 +40,13 @@ def get_db():
         yield db
     finally:
         db.close()
+
+async def get_db_async():
+    try:
+        db = connect(DB_URL)
+        yield db
+    finally:
+        await db.close()
 
 
 class Token(BaseModel):

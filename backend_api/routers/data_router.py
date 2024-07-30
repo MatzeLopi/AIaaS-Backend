@@ -11,7 +11,7 @@ from ..constants import DBError
 from ..logic.tf_datasets import infer_schema, schema_to_sqlschema
 
 router = APIRouter(
-    prefix="/data", tags=["data"], dependencies=[Depends(verify_password)]
+    prefix="/data", tags=["data"], dependencies=[Depends(dependencies.get_current_active_user)]
 )
 
 
@@ -29,11 +29,20 @@ def upload_file(
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided.")
     else:
-
-        schema = infer_schema(file.file)
+        schema = infer_schema(file, has_headers, delimiter)
         sql_schema = schema_to_sqlschema(schema)
 
         table_name = datasets.create_table_from_file(db, sql_schema, current_user)
         datasets.insert_csv(db, table_name, file, schema, has_headers, delimiter)
 
         return file.filename
+
+@router.get("/datasets")
+def get_datasets(
+    current_user: Annotated[
+        schemas.UserBase, Depends(dependencies.get_current_active_user)
+    ],
+    db: Session = Depends(get_db),
+) -> list[str]:
+    """Get the datasets for the current user."""
+    return datasets.get_datasets(db, current_user)
