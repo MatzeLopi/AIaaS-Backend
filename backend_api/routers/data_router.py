@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..backend.crud import datasets
 from ..backend import schemas, dependencies
-from ..backend.dependencies import get_db, verify_password
+from ..backend.dependencies import get_db
 from ..constants import DBError
 from ..logic.tf_datasets import infer_schema, schema_to_sqlschema
 
@@ -43,6 +43,6 @@ def get_datasets(
         schemas.UserBase, Depends(dependencies.get_current_active_user)
     ],
     db: Session = Depends(get_db),
-) -> list[str]:
+):
     """Get the datasets for the current user."""
-    return datasets.get_datasets(db, current_user)
+    return datasets.get_available_datasets(db, current_user)

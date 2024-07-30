@@ -8,10 +8,13 @@ import polars as pl
 from fastapi import UploadFile, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import text
 
 from .. import models, schemas
 from ...constants import CHUNK_SIZE
 
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def create_table_from_file(
     db: Session, schema:dict[str,str], user: schemas.UserBase
@@ -33,25 +36,24 @@ def create_table_from_file(
     Returns:
         str: Name of the table created.
     """
-
-
     columns = ", ".join([f"{name} {dtype}" for name, dtype in schema.items()])
     table_name = f"table_{uuid4()}"
+    table_name = table_name.replace("-", "_")
 
     sql = f"CREATE TABLE {table_name} ({columns})"
     metadata = models.UserTable(username=user.username, table_name=table_name)
-
+    
     try:
-        with db.begin():
-            db.execute(sql)
-
-            db.add(metadata)
+        db.execute(text(sql))
+        db.add(metadata)
 
     except SQLAlchemyError as e:
+        db.rollback()
         logging.error(f"Error during transaction: {e}")
         raise HTTPException(status_code=400, detail="Could not create table")
 
     else:
+        db.commit()
         return table_name
 
 
@@ -79,6 +81,8 @@ def insert_csv(
     Returns:
         bool: True if the data was inserted successfully.
     """
+    # TODO: Save file as temp file and use polars to read it
+
     lazy_frame = pl.scan_csv(
         data.file,
         low_memory=True,
@@ -87,6 +91,7 @@ def insert_csv(
         infer_schema=False,
         schema=csv_schema,
     )
+    
     for chunk in lazy_frame.chunks(streaming=True, chunk_size=CHUNK_SIZE):
         try:
             chunk.write_database(table_name, db, if_exists="append")
@@ -96,7 +101,7 @@ def insert_csv(
         else:
             return True
 
-def get_available_datasets(user: schemas.UserBase) -> list[models.UserTable]:
+def get_available_datasets(db:Session, user: schemas.UserBase):
     """Get all available datasets.
     
     Args:
@@ -105,4 +110,4 @@ def get_available_datasets(user: schemas.UserBase) -> list[models.UserTable]:
     Returns:
         list[models.UserTable]: List of available datasets.
     """
-    return models.UserTable.query.filter_by(username=user.username).all()
+    return db.query(models.UserTable).filter(models.UserTable.username == user.username).all()

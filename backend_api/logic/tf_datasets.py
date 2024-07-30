@@ -28,10 +28,7 @@ def infer_schema(
         infer_schema_length=100,
         truncate_ragged_lines=True,
     )
-    schema = sample_df.collect_schema()
-    print("-" * 22 , "Schema", "-" * 22)
-    print(schema)
-    print("-" * 50)
+    schema:pl.schema.Schema = sample_df.collect_schema()
     return schema
 
 
@@ -45,18 +42,20 @@ def schema_to_sqlschema(schema: dict[str, DataType]) -> dict[str, str]:
         dict: SQL schema of the CSV file. Maps column names to PostgreSQL data types.
     """
     sql_schema = {}
-    for name, dtype in schema.items():
-        if dtype == pl.Int64:
-            sql_schema[name] = "INTEGER"
-        elif dtype == pl.Float64:
-            sql_schema[name] = "REAL"
-        elif dtype == pl.Utf8:
-            sql_schema[name] = "TEXT"
-        elif dtype == pl.Date32:
-            sql_schema[name] = "DATE"
-        elif dtype == pl.Boolean:
-            sql_schema[name] = "BOOLEAN"
-        else:
-            sql_schema[name] = "TEXT"
+    for columns, dtype in schema.items():
+        for column in columns.split(";"):
+            column = column.strip()
+            if dtype == pl.Int64:
+                sql_schema[column] = "INTEGER"
+            elif dtype == pl.Float64:
+                sql_schema[column] = "REAL"
+            elif dtype == pl.Utf8:
+                sql_schema[column] = "TEXT"
+            elif dtype == pl.Date32:
+                sql_schema[column] = "DATE"
+            elif dtype == pl.Boolean:
+                sql_schema[column] = "BOOLEAN"
+            else:
+                sql_schema[column] = "TEXT"
 
     return sql_schema
