@@ -1,7 +1,16 @@
+import logging
+import os
 ACCESS_TOKEN_EXPIRE_MINUTES = 30 # Expire time for the access token in minutes.
 
-ALGORITHM = "HS256"
+LOGLEVEL = logging.DEBUG
 
-CHUNK_SIZE = 10000 # Chunk size for reading files in Rows.
+ALGORITHM = "HS256"
+UPLOAD_FILE_DIR = r"/temp/uploaded_files" # Directory for uploaded files.
+CHUNK_SIZE = 1 # Chunk size for reading files in Rows.
+
 class DBError(Exception):
     pass
+
+
+if not os.path.exists(UPLOAD_FILE_DIR):
+    os.makedirs(UPLOAD_FILE_DIR)

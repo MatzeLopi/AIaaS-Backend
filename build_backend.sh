@@ -2,8 +2,11 @@
 IMAGE_NAME="backend"
 IMAGE_TAG="latest"
 
+image=$IMAGE_NAME:$IMAGE_TAG
+
+
 # Build the Docker image using the Dockerfile.backend
-docker build -t "$IMAGE_NAME:$IMAGE_TAG" -f dockerfile.backend .
+docker build -t $image -f dockerfile .
 
 # Check if the build was successful
 if [ $? -eq 0 ]; then
