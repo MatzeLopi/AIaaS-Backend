@@ -162,3 +162,7 @@ cython_debug/
 #.idea/
 
 *config*
+
+# Models
+*.h5
+*.tar

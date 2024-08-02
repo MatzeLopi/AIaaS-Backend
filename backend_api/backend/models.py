@@ -86,3 +86,7 @@ class UserTable(Base):
         return (
             f"<UserTable(username='{self.username}', table_name='{self.table_name}')>"
         )
+
+class ModelTable(Base):
+    # TODO: Implement model table in DB
+    pass

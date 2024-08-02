@@ -6,14 +6,12 @@ from typing import Annotated
 from datetime import timedelta
 
 # Third-party modules
-from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 # Custom modules
 from .constants import ACCESS_TOKEN_EXPIRE_MINUTES
-from .backend import models
-from .backend.database import engine
 from .backend.dependencies import (
     get_db,
     authenticate_user,
@@ -21,7 +19,7 @@ from .backend.dependencies import (
     Token,
 )
 
-from .routers import users, internal, data_router
+from .routers import users, internal, data_router, models_router
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("backend_api")
@@ -31,6 +29,7 @@ app = FastAPI(title="AIaaS API", version="0.1.0")
 app.include_router(users.router)
 app.include_router(internal.router)
 app.include_router(data_router.router)
+app.include_router(models_router.router)
 
 
 @app.post("/token")

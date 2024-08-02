@@ -1,4 +1,5 @@
 absl-py==2.1.0
+aiofiles==24.1.0
 aiosmtplib==2.0.2
 annotated-types==0.7.0
 anyio==4.4.0
@@ -42,15 +43,17 @@ packaging==24.1
 passlib==1.7.4
 polars==1.2.1
 protobuf==4.25.4
-psycopg2-binary == 2.9.9
+pyarrow==17.0.0
 pydantic==2.8.2
 pydantic-settings==2.3.4
 pydantic_core==2.20.1
 Pygments==2.18.0
 PyJWT==2.8.0
+python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 python-multipart==0.0.9
 python-rapidjson==1.18
+pytz==2024.1
 PyYAML==6.0.1
 requests==2.32.3
 rich==13.7.1
@@ -67,6 +70,7 @@ tensorflow-intel==2.17.0
 termcolor==2.4.0
 typer==0.12.3
 typing_extensions==4.12.2
+tzdata==2024.1
 urllib3==2.2.2
 uvicorn==0.30.3
 watchfiles==0.22.0

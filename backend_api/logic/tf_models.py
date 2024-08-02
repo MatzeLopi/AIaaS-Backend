@@ -1,12 +1,14 @@
+import re
 from uuid import uuid4
 from typing import Any
 from enum import Enum
+from inspect import signature
 
 import tensorflow as tf
 from tensorflow import keras
 from pathlib import Path
 
-TF_ENABLE_ONEDNN_OPTS = 0
+from ..constants import MODEL_DIR, TF_ENABLE_ONEDNN_OPTS
 
 
 class LayerJSONError(Exception):
@@ -14,26 +16,170 @@ class LayerJSONError(Exception):
 
 
 class LayerType(Enum):
-
-    dense = keras.layers.Dense
-    conv_1d = keras.layers.Conv1D
-    conv_2d = keras.layers.Conv2D
-    conv_3d = keras.layers.Conv3D
-    max_pool_1d = keras.layers.MaxPool1D
-    max_pool_2d = keras.layers.MaxPool2D
-    max_pool_3d = keras.layers.MaxPool3D
-    golbal_average_pooling_1d = keras.layers.GlobalAveragePooling1D
-    global_average_pooling_2d = keras.layers.GlobalAveragePooling2D
-    global_average_pooling_3d = keras.layers.GlobalAveragePooling3D
-    flatten = keras.layers.Flatten
-    dropout = keras.layers.Dropout
-    batch_norm = keras.layers.BatchNormalization
-    concat = keras.layers.Concatenate
+    activation = keras.layers.Activation
+    activation_regularizer = keras.layers.ActivationRegularizer
     add = keras.layers.Add
+    addaptive_attention = keras.layers.AddaptiveAttention
+    alpha_dropout = keras.layers.AlphaDropout
+    attention = keras.layers.Attention
+    average = keras.layers.Average
+    average_pooling_1d = keras.layers.AveragePooling1D
+    average_pooling_2d = keras.layers.AveragePooling2D
+    average_pooling_3d = keras.layers.AveragePooling3D
+    batch_normalization = keras.layers.BatchNormalization
+    bidirectional = keras.layers.Bidirectional
+    catecorical_encoding = keras.layers.CategoricalEncoding
+    center_crop = keras.layers.CenterCrop
+    concatenate = keras.layers.Concatenate
+    conv_1d = keras.layers.Conv1D
+    conv_1d_transpose = keras.layers.Conv1DTranspose
+    conv_2d = keras.layers.Conv2D
+    conv_2d_transpose = keras.layers.Conv2DTranspose
+    conv_3d = keras.layers.Conv3D
+    conv_3d_transpose = keras.layers.Conv3DTranspose
+    conv_lstm_1d = keras.layers.ConvLSTM1D
+    conv_lstm_2d = keras.layers.ConvLSTM2D
+    conv_lstm_3d = keras.layers.ConvLSTM3D
+    cropping_1d = keras.layers.Cropping1D
+    cropping_2d = keras.layers.Cropping2D
+    cropping_3d = keras.layers.Cropping3D
+    dense = keras.layers.Dense
+    depthwise_conv_1d = keras.layers.DepthwiseConv1D
+    depthwise_conv_2d = keras.layers.DepthwiseConv2D
+    discretization = keras.layers.Discretization
+
 
 
 class Layer:
     pass
+
+
+def parse_docstring(docstring: str, arg_list: list[str]) -> dict:
+    """
+    Parses a docstring into a dictionary with argument names as keys and their descriptions as values.
+
+    Args:
+        docstring (str): The docstring to be parsed.
+        arg_list (list[str]): List of arguments of the function.
+
+    Returns:
+        dict: A dictionary with argument names as keys and their descriptions as values.
+    """
+    # Regular expression to match the argument name and its description
+    arg_pattern = re.compile(r"\s*(\w+):\s*(.*)")
+
+    # Initialize variables
+    args_dict = {}
+    current_arg = None
+
+    # Iterate over each line in the docstring
+    for line in docstring.split("\n"):
+        # Check for a match with the argument pattern
+        match = arg_pattern.match(line)
+        if match:
+            # If a new argument is found, add it to the dictionary
+            current_arg = match.group(1)
+            args_dict[current_arg] = match.group(2)
+        elif current_arg:
+            # If the line is part of the description, append it to the current argument's description
+            args_dict[current_arg] += " " + line.strip()
+
+    # Clean up descriptions by removing excessive whitespaces
+    for arg in args_dict:
+        args_dict[arg] = " ".join(args_dict[arg].split())
+
+    # Remove and args which are not in the arg_list
+    args_dict = {key: value for key, value in args_dict.items() if key in arg_list}
+
+    return args_dict
+
+
+def get_args_kwargs(sig: Any) -> tuple[list[str], dict[str, str]]:
+    """Get the arguments and keyword arguments of a function signature.
+
+    Args:
+        sig (Any): Function signature.
+
+    Returns:
+        tuple[list[str], dict[str, str]]: Tuple containing the arguments and keyword arguments.
+    """
+    # Get the parameters of the function signature
+    params = sig.parameters
+
+    # Initialize lists for arguments and keyword arguments
+    args = []
+    kwargs = {}
+
+    # Iterate over the parameters
+    for param in params.values():
+        # If the parameter has a default value, it is a keyword argument
+        if param.default != param.empty:
+            kwargs[param.name] = param.default
+        else:
+            # Otherwise, it is a regular argument
+            args.append(param.name)
+
+    return args, kwargs
+
+
+def get_arg_type(docstring: str) -> str:
+    """Get the type of the argument from the docstring.
+
+    Args:
+        docstring (str): The docstring to be parsed.
+
+    Returns:
+        str: The type of the argument.
+    """
+    lower_doc = docstring.lower()
+    if " int" in lower_doc or lower_doc.startswith("int"):
+        return int
+    elif " str" in lower_doc or lower_doc.startswith("str"):
+        return str
+    elif " float" in lower_doc or lower_doc.startswith("float"):
+        return float
+    elif (
+        " bool" in lower_doc
+        or "true" in lower_doc
+        or "false" in lower_doc
+        or lower_doc.startswith("bool")
+    ):
+        return bool
+    elif " list" in lower_doc or lower_doc.startswith("list"):
+        return list
+    elif " dict" in lower_doc or lower_doc.startswith("dict"):
+        return dict
+    else:
+        return "Unknown"
+
+
+def get_layers() -> dict[str[dict[str, dict[str, str]]]]:
+    """Returns a dictionary of all the layers available with their arguments and keyword arguments.
+
+    Returns:
+        dict[str[dict[str, dict[str, str]]]]: Dictionary containing the layers and their arguments.
+    """
+    layers = {}
+
+    for layer in LayerType:
+        tf_layer = layer.value
+        sig = signature(tf_layer)
+        params = set(sig.parameters.keys())
+        args, kwargs = get_args_kwargs(sig)
+
+        layer_docstring: str = tf_layer.__doc__
+        docstring_dict: dict[str, str] = parse_docstring(layer_docstring, params)
+        docstring_dict: dict[str, dict[str, str]] = {
+            arg: {"doc": doc, "type": get_arg_type(doc)}
+            for arg, doc in docstring_dict.items()
+        }
+
+        args_dict = {arg: docstring_dict.get(arg) for arg in args if arg != "kwargs"}
+        kwargs_dict = {kwarg: docstring_dict.get(kwarg) for kwarg in kwargs}
+
+        layers[layer.name] = {"args": args_dict, "kwargs": kwargs_dict}
+
+    return layers
 
 
 def train_model(
@@ -331,10 +477,10 @@ def create_graph(
                         output_uuids,
                         connected_output=connected_output,
                     )
-                
+
 
 def create_model(layers_json: dict[str, Any]) -> str:
-    """ Create a model from a JSON object.
+    """Create a model from a JSON object.
 
     Args:
         layers_json (dict[str, Any]): JSON object representing the model.
@@ -360,10 +506,6 @@ def create_model(layers_json: dict[str, Any]) -> str:
             raise ValueError("Layer type not found.")
 
     all_layers: dict[str, keras.layers.Layer] = {**tf_inputs, **tf_layers, **tf_outputs}
-    print(len(all_layers))
-    print(len(tf_inputs))
-    print(len(tf_layers))
-    print(len(tf_outputs))
 
     visited = set()
     input_layer, *_ = tf_layers.values()
@@ -379,15 +521,12 @@ def create_model(layers_json: dict[str, Any]) -> str:
 
     model = keras.Model(inputs=tf_inputs.values(), outputs=output_layers)
 
-    model_id = uuid4()
+    model_id = uuid4().hex
     parent_folder = Path(__file__.parent).parent
 
     # Check if the model folder exists
-    model_folder = parent_folder / "models"
-    if not model_folder.exists():
-        model_folder.mkdir()
-    
+
     # Save the model
-    model.save(model_folder / f"{model_id}.h5") 
-    
-    return model_folder / f"{model_id}.h5"
+    model.save(MODEL_DIR / f"{model_id}.h5")
+
+    return MODEL_DIR / f"{model_id}.h5"
