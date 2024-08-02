@@ -52,7 +52,7 @@ def infer_schema(
     return schema_dict
 
 
-def schema_to_sqlschema(schema: dict[str, DataType]) -> dict[str, str]:
+async def schema_to_sqlschema(schema: dict[str, DataType]) -> dict[str, str]:
     """Convert the schema to SQL schema.
 
     Args:

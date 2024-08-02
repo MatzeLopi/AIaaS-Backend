@@ -3,14 +3,12 @@
 import logging
 from uuid import uuid4
 from pathlib import Path
-from shutil import copyfileobj
-from asyncio import run
 
 import polars as pl
 import aiofiles
 from fastapi import UploadFile, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import text
 
 from .. import models, schemas
@@ -20,11 +18,13 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def insert_dataframe(db: Session, dataframe: pl.DataFrame, table_name: str) -> bool:
+async def insert_dataframe(
+    db: AsyncSession, dataframe: pl.DataFrame, table_name: str
+) -> bool:
     """Insert a Polars DataFrame into the database.
 
     Args:
-        db (Session): Session object
+        db (AsyncSession): Session object
         dataframe (pl.DataFrame): DataFrame to insert.
         table_name (str): Name of the table to insert data into.
 
@@ -59,11 +59,13 @@ async def save_upload_file_tmp(upload_file: UploadFile) -> Path:
     return file_path
 
 
-def delete_table(db: Session, table_name: str, user: schemas.UserBase) -> bool:
+async def delete_table(
+    db: AsyncSession, table_name: str, user: schemas.UserBase
+) -> bool:
     """Delete a table from the database.
 
     Args:
-        db (Session): Session object
+        db (AsyncSession): Session object
         table_name (str): Name of the table to delete.
 
     Returns:
@@ -71,7 +73,7 @@ def delete_table(db: Session, table_name: str, user: schemas.UserBase) -> bool:
     """
 
     if (
-        not db.query(models.UserTable)
+        not await db.query(models.UserTable)
         .filter(
             models.UserTable.table_name == table_name,
             models.UserTable.username == user.username,
@@ -80,22 +82,22 @@ def delete_table(db: Session, table_name: str, user: schemas.UserBase) -> bool:
     ):
         raise HTTPException(status_code=401, detail="Unauthorized request")
     try:
-        db.execute(text(f"DROP TABLE {table_name}"))
-        db.query(models.UserTable).filter(
+        await db.execute(text(f"DROP TABLE {table_name}"))
+        await db.query(models.UserTable).filter(
             models.UserTable.table_name == table_name
         ).delete()
     except SQLAlchemyError as e:
-        db.rollback()
+        await db.rollback()
         logging.error(f"Error during transaction: {e}")
         raise HTTPException(status_code=400, detail="Could not delete table")
     else:
-        db.commit()
+        await db.commit()
         logger.debug(f"Table {table_name} deleted")
         return True
 
 
-def create_table_from_file(
-    db: Session, schema: dict[str, str], user: schemas.UserBase
+async def create_table_from_file(
+    db: AsyncSession, schema: dict[str, str], user: schemas.UserBase
 ) -> str:
     """Create a table in the database.
 
@@ -104,7 +106,7 @@ def create_table_from_file(
     This list is inferred from the schema of the uploaded file.
 
     Args:
-        db (Session): Session object
+        db (AsyncSession): Session object
         column_names (list[str]): List of column names.
         column_types (list[str]): List of columns and their types.
 
@@ -124,21 +126,21 @@ def create_table_from_file(
     logger.debug(f"Creating table: {sql}")
 
     try:
-        db.execute(text(sql))
+        await db.execute(text(sql))
         db.add(metadata)
 
     except SQLAlchemyError as e:
-        db.rollback()
+        await db.rollback()
         logging.error(f"Error during transaction: {e}")
         raise HTTPException(status_code=400, detail="Could not create table")
 
     else:
-        db.commit()
+        await db.commit()
         return table_name
 
 
-def insert_csv(
-    db: Session,
+async def insert_csv(
+    db: AsyncSession,
     table_name: str,
     file_path: str,
     csv_schema: dict,
@@ -150,7 +152,7 @@ def insert_csv(
     """Insert data from a CSV file into the database.
 
     Args:
-        db (Session): Session object
+        db (AsyncSession): Session object
         table_name (str): Name of the table to insert data into.
         file_path (str): Path to CSV file to upload.
         csv_schema (dict): Schema of the CSV file.
@@ -166,18 +168,15 @@ def insert_csv(
         bool: True if the data was inserted successfully.
     """
     # Check if user has access to the table
-    if (
-        not db.query(models.UserTable)
-        .filter(
+    if not (
+        await db.query(models.UserTable).filter(
             models.UserTable.table_name == table_name,
             models.UserTable.username == user.username,
         )
-        .first()
-    ):
+    ).first():
         raise HTTPException(status_code=401, detail="Unauthorized request")
 
-    # TODO: Port this to async
-    lazy_frame = pl.scan_csv(
+    lazy_frame: pl.LazyFrame = pl.scan_csv(
         file_path,
         has_header=has_headers,
         separator=sep,
@@ -186,14 +185,14 @@ def insert_csv(
         decimal_comma=decimal_comma,
     )
 
-    size: int = lazy_frame.select(pl.len()).collect().item()
+    size: int = await lazy_frame.select(pl.len()).collect_async().item()
 
     logger.debug(f"Size of the file: {size}")
 
     if size < CHUNK_SIZE:
         try:
-            data_frame = lazy_frame.collect()
-            insert_dataframe(db, data_frame, table_name)
+            data_frame: pl.DataFrame = await lazy_frame.collect_async()
+            await insert_dataframe(db, data_frame, table_name)
         except Exception as e:
             logging.error(f"Error during insert: {e}")
             raise HTTPException(status_code=400, detail="Could not insert data")
@@ -201,12 +200,12 @@ def insert_csv(
             return True
 
     else:
-        chunks = size // CHUNK_SIZE
+        chunks: int = size // CHUNK_SIZE
         if size % CHUNK_SIZE != 0:
             chunks += 1
 
         # Read first chunk by defining new lazy frame
-        lazy_frame = pl.scan_csv(
+        lazy_frame: pl.LazyFrame = pl.scan_csv(
             file_path,
             has_header=has_headers,
             separator=sep,
@@ -216,15 +215,15 @@ def insert_csv(
             n_rows=CHUNK_SIZE,
         )
 
-        data_frame = lazy_frame.collect()
+        data_frame = await lazy_frame.collect_async()
         try:
-            insert_dataframe(db, data_frame, table_name)
+            await insert_dataframe(db, data_frame, table_name)
         except Exception as e:
             logging.error(f"Error during insert: {e}")
             raise HTTPException(status_code=400, detail="Could not insert data")
 
         for chunk in range(1, chunks):
-            lazy_frame = pl.scan_csv(
+            lazy_frame: pl.LazyFrame = pl.scan_csv(
                 file_path,
                 skip_rows=CHUNK_SIZE * chunk,
                 has_header=False,
@@ -234,9 +233,9 @@ def insert_csv(
                 decimal_comma=decimal_comma,
                 n_rows=CHUNK_SIZE,
             )
-            data_frame = lazy_frame.collect()
+            data_frame: pl.DataFrame = await lazy_frame.collect_async()
             try:
-                insert_dataframe(db, data_frame, table_name)
+                await insert_dataframe(db, data_frame, table_name)
             except Exception as e:
                 logging.error(f"Error during insert: {e}")
                 raise HTTPException(status_code=400, detail="Could not insert data")
@@ -244,17 +243,18 @@ def insert_csv(
     return True
 
 
-def get_available_datasets(db: Session, user: schemas.UserBase):
+async def get_available_datasets(db: AsyncSession, user: schemas.UserBase):
     """Get all available datasets.
 
     Args:
+        db (AsyncSession): Session object
         user (schemas.UserBase): User object.
 
     Returns:
         list[models.UserTable]: List of available datasets.
     """
     return (
-        db.query(models.UserTable)
-        .filter(models.UserTable.username == user.username)
-        .all()
-    )
+        await db.query(models.UserTable).filter(
+            models.UserTable.username == user.username
+        )
+    ).all()

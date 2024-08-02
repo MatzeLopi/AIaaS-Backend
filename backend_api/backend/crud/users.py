@@ -3,8 +3,10 @@
 import logging
 
 from fastapi import BackgroundTasks
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import EmailStr
 
 from .. import models, schemas
@@ -13,12 +15,12 @@ from ...constants import DBError
 
 logger = logging.getLogger(__name__)
 
-@retry((OperationalError))
-def get_user(db: Session, username: str) -> models.User:
+
+async def get_user(db: AsyncSession, username: str) -> models.User:
     """Get a user by name from the DB
 
     Args:
-        db (Session): Session object
+        db (AsyncSession): Session object
         username (str): Name of the user to get
 
     Raises:
@@ -27,7 +29,8 @@ def get_user(db: Session, username: str) -> models.User:
     Returns:
         models.User: User from the database
     """
-    user = db.query(models.User).filter(models.User.username == username).first()
+    user = (await db.scalars(select(models.User).where(models.User.username == username))).first()
+
     if user is None:
         logger.debug(f"User {username} not found")
         raise ValueError(f"User {username} not found")
@@ -36,11 +39,11 @@ def get_user(db: Session, username: str) -> models.User:
         return user
 
 
-def get_user_by_mail(db: Session, email: EmailStr) -> models.User:
+async def get_user_by_mail(db: AsyncSession, email: EmailStr) -> models.User:
     """Get a user by email from the DB
 
     Args:
-        db (Session): Session object
+        db (AsyncSession): Session object
         email (EmailStr): Email of the user to get
 
     Raises:
@@ -50,21 +53,22 @@ def get_user_by_mail(db: Session, email: EmailStr) -> models.User:
         models.User: User from the database
 
     """
-    user = db.query(models.User).filter(models.User.email == email).first()
+    user = (await db.scalars(select(models.User).where(models.User.email == email))).first()
 
     if user is None:
         logger.debug(f"User with email {email} not found")
+
         raise ValueError(f"User with email {email} not found")
     else:
         logger.debug(f"User: {user}")
         return user
 
 
-def get_users(db: Session, skip: int = 0, limit: int = 100) -> list[models.User]:
+async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[models.User]:
     """Get all users from the DB
 
     Args:
-        db (Session): Session object
+        db (AsyncSession): Session object
         skip (int, optional): Number of users to skip. Defaults to 0.
         limit (int, optional): Number of users to get. Defaults to 100.
 
@@ -74,7 +78,7 @@ def get_users(db: Session, skip: int = 0, limit: int = 100) -> list[models.User]
     Returns:
         List[models.User]: List of users
     """
-    users = db.query(models.User).offset(skip).limit(limit).all()
+    users = (await db.scalars(select(models.User).offset(skip).limit(limit))).all()
 
     if users:
         logger.debug(f"Found {len(users)} users in the database.")
@@ -83,7 +87,7 @@ def get_users(db: Session, skip: int = 0, limit: int = 100) -> list[models.User]
         raise ValueError("No users found in the database")
 
 
-def create_user(db: Session, user: schemas.UserCreate, bg_task: BackgroundTasks):
+async def create_user(db: Session, user: schemas.UserCreate, bg_task: BackgroundTasks):
     """Create new user
 
     Args:
@@ -92,8 +96,8 @@ def create_user(db: Session, user: schemas.UserCreate, bg_task: BackgroundTasks)
     Returns:
         UserInDB: User as represented in the Database.
     """
-    hashed_password = get_password_hash(user.password)
-    verification_token = generate_verification_token()
+    hashed_password = await get_password_hash(user.password)
+    verification_token = await generate_verification_token()
 
     # Send email
     body = f"Please verify your email by clicking on the following link: http://192.168.2.135:8000/users/verify_email/{verification_token}"
@@ -108,20 +112,21 @@ def create_user(db: Session, user: schemas.UserCreate, bg_task: BackgroundTasks)
     )
     try:
         db.add(db_user)
-        db.commit()
-        db.refresh(db_user)
+        await db.commit()
+        await db.refresh(db_user)
     except Exception as e:
+        await db.rollback()
         logger.error(f"Could not create user: {e}")
         raise DBError("Could not create user in the database")
     else:
         return db_user
 
 
-def delete_user(db: Session, username: str) -> models.User:
+async def delete_user(db: AsyncSession, username: str) -> models.User:
     """Delete a user from the database
 
     Args:
-        db (Session): Database session
+        db (AsyncSession): Database session
         username (str): Username of the user to delete
 
     Raises:
@@ -130,14 +135,15 @@ def delete_user(db: Session, username: str) -> models.User:
     Returns:
         User: User object
     """
-    user = db.query(models.User).filter(models.User.username == username).first()
+    user = await get_user(db, username)
 
     if user is None:
         raise ValueError(f"User {username} not found")
+    
     else:
         try:
             db.delete(user)
-            db.commit()
+            await db.commit()
         except Exception as e:
             logger.error(f"Could not delete user: {e}")
             raise DBError("Could not delete user from the database")
@@ -145,11 +151,11 @@ def delete_user(db: Session, username: str) -> models.User:
             return user
 
 
-def verify_email(db: Session, token: str) -> models.User:
+async def verify_email(db: AsyncSession, token: str) -> models.User:
     """Verify the email of the user
 
     Args:
-        db (Session): Database session
+        db (AsyncSession): Database session
         token (str): Verification token
 
     Raises:
@@ -158,18 +164,20 @@ def verify_email(db: Session, token: str) -> models.User:
     Returns:
         User: User object
     """
-    user = db.query(models.User).filter(models.User.verification_token == token).first()
+    user = (await db.scalars(select(models.User).where(models.User.verification_token == token))).first()
 
     if user is None:
         raise ValueError("Invalid verification token")
+    
     elif user.email_verified:
         return user
+    
     else:
         user.email_verified = True
         user.verification_token = None
         try:
-            db.commit()
-            db.refresh(user)
+            await db.commit()
+            await db.refresh(user)
         except Exception as e:
             logger.error(f"Could not verify email: {e}")
             raise DBError("Could not verify email")

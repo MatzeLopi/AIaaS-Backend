@@ -25,7 +25,7 @@ except FileNotFoundError as e:
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def generate_verification_token() -> str:
+async def generate_verification_token() -> str:
     """Generate a verification token.
 
     Returns:
@@ -34,7 +34,7 @@ def generate_verification_token() -> str:
     return "".join(SystemRandom().choice(ascii_uppercase + digits) for _ in range(15))
 
 
-def get_password_hash(password: str) -> str:
+async def get_password_hash(password: str) -> str:
     """Create a password hash.
 
     Args:

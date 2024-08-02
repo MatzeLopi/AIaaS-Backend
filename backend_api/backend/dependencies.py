@@ -10,10 +10,10 @@ from pydantic import BaseModel
 from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from asyncpg import connect
 
-from .database import SessionLocal, DB_URL
+from .database import sessionmanager
 from . import models, schemas
 from .crud.users import get_user
 from ..constants import ALGORITHM
@@ -33,20 +33,15 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-# Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db():
+    """Get a database session.
 
-async def get_db_async():
-    try:
-        db = connect(DB_URL)
-        yield db
-    finally:
-        await db.close()
+    Returns:
+        Session: Database session.
+
+    """
+    async with sessionmanager.session() as session:
+        yield session
 
 
 class Token(BaseModel):
@@ -71,7 +66,7 @@ class TokenData(BaseModel):
     username: str | None = None
 
 
-async def verify_internal(internal_key = Header()) -> bool:
+async def verify_internal(internal_key=Header()) -> bool:
     """Verify that internal requests are allowed to be made.
 
     Args:
@@ -90,7 +85,7 @@ async def verify_internal(internal_key = Header()) -> bool:
         return True
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+async def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify the password against the hashed password.
 
     Args:
@@ -106,7 +101,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def authenticate_user(username: str, password: str, db: Session) -> models.User:
+async def authenticate_user(username: str, password: str, db: AsyncSession) -> models.User:
     """Authenticate the user.
 
     Args:
@@ -126,20 +121,22 @@ def authenticate_user(username: str, password: str, db: Session) -> models.User:
         detail="Incorrect username or password",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
     logger.debug(f"Authenticating user: {username}")
+    
     try:
-        user: models.User = get_user(db, username)
+        user: models.User = await get_user(db, username)
     except ValueError:
         logger.debug(f"User not found: {username}")
         raise auth_error
     else:
-        if not verify_password(password, user.hashed_password):
+        if not await verify_password(password, user.hashed_password):
             logger.debug("Password verification failed")
             raise auth_error
     return user
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+async def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """Create an access token for the user.
 
     Args:
@@ -160,7 +157,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)
+    token: Annotated[str, Depends(oauth2_scheme)], db: AsyncSession = Depends(get_db)
 ):
     """Get the current user from the token.
 
@@ -190,7 +187,7 @@ async def get_current_user(
         raise credentials_exception
 
     try:
-        user = get_user(db, username=token_data.username)
+        user = await get_user(db, username=token_data.username)
     except ValueError:
         logger.debug(f"User not found: {token_data.username}")
         raise credentials_exception
@@ -212,6 +209,7 @@ async def get_current_active_user(
     Returns:
         User: User object if the user is active.
     """
+    
     if current_user.disabled:
         logger.debug(f"User {current_user.username} is inactive")
         raise HTTPException(status_code=400, detail="Inactive user")

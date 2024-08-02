@@ -23,7 +23,6 @@ from .backend.dependencies import (
 
 from .routers import users, internal, data_router
 
-models.Base.metadata.create_all(bind=engine)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("backend_api")
 
@@ -35,11 +34,11 @@ app.include_router(data_router.router)
 
 
 @app.post("/token")
-def login_for_access_token(
+async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Session = Depends(get_db),
 ) -> Token:
-    user = authenticate_user(form_data.username, form_data.password, db)
+    user = await authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -47,7 +46,7 @@ def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
+    access_token = await create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return Token(access_token=access_token, token_type="bearer")

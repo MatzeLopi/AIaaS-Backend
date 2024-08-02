@@ -23,13 +23,13 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.post("/new/", response_model=schemas.UserBase)
-def create_user_endpoint(
+async def create_user_endpoint(
     background_task: BackgroundTasks,
     user: schemas.UserCreate,
     db: Session = Depends(get_db),
 ):
     try:
-        message = users.create_user(db, user, background_task)
+        message = await users.create_user(db, user, background_task)
     except Exception as e:
         logger.error(
             f"Could not create user: {e}. Trackeback: {traceback.format_exc()}"
@@ -40,14 +40,14 @@ def create_user_endpoint(
 
 
 @router.get("/verify_email/{verify_token}")
-def verify_email(verify_token: str, db: Session = Depends(get_db)) -> Token:
+async def verify_email(verify_token: str, db: Session = Depends(get_db)) -> Token:
     try:
-        user = users.verify_email(db, verify_token)
+        user = await users.verify_email(db, verify_token)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid verification token")
     else:
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = dependencies.create_access_token(
+        access_token = await dependencies.create_access_token(
             data={"sub": user.username}, expires_delta=access_token_expires
         )
         return Token(access_token=access_token, token_type="bearer")
@@ -63,7 +63,7 @@ async def read_users_me(
 
 
 @router.delete("/delete", response_model=schemas.UserBase)
-def delete_user(
+async def delete_user(
     password: str,
     db: Session = Depends(get_db),
     current_user: str = Depends(dependencies.get_current_active_user),
@@ -79,9 +79,9 @@ def delete_user(
     Raises:
         HTTPException: Raised if the password is incorrect and user is not deleted.
     """
-    user = users.get_user(db, current_user.username)
+    user = await users.get_user(db, current_user.username)
 
-    if dependencies.verify_password(password, user.hashed_password):
-        return users.delete_user(db, current_user.username)
+    if await dependencies.verify_password(password, user.hashed_password):
+        return await users.delete_user(db, current_user.username)
     else:
-        raise HTTPException(status_code=400, detail="Incorrect password")
+        raise HTTPException(status_code=401, detail="Password verification failed.")
