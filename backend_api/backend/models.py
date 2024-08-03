@@ -8,6 +8,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Index,
     Integer,
+    Text
 )
 
 
@@ -59,34 +60,67 @@ class User(Base):
         return f"<User(username='{self.username}', email='{self.email}', full_name='{self.full_name}')>"
 
 
-class UserTable(Base):
-    """ Model for storing metadata about the tables created by the user.
+class Datasets(Base):
+    """Model for storing dataset information
 
     Attributes:
-        username (str): Username of the user.
-        table_name (str): Name of the table created by the user.
-        created_at (datetime): Date and time when the table was created.
-        updated_at (datetime): Date and time when the table was last updated.
-    """
-    __tablename__ = "user_tables"
+        dataset_id (str): Unique identifier for the dataset
+        dataset_name (str): Name of the dataset
+        dataset_description (str): Description of the dataset
+        created_at (datetime): Date and time when the dataset was created
+        updated_at (datetime): Date and time when the dataset was last updated
+        user_id (str): User ID of the dataset owner
+        dataset_type (str): Type of the dataset
+        version (int): Version of the dataset
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    username = Column(String(255), nullable=False)
-    table_name = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    """
+
+    __tablename__ = "datasets"
+
+    dataset_id = Column(String(255), primary_key=True, nullable=False)
+    dataset_name = Column(String(255), nullable=True)
+    dataset_description = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.now, onupdate=datetime.now, nullable=False
+    )
+    user_id = Column(String(255), nullable=False)
+    dataset_type = Column(String(255), nullable=False)
+    version = Column(Integer, nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("username", "table_name", name="uq_username_table_name"),
-        Index("idx_user_tables_username", "username"),
-        Index("idx_user_tables_table_name", "table_name"),
+        UniqueConstraint("dataset_name", name="unique_dataset_name"),
+        Index("idx_user_id", "user_id"),
+        Index("idx_dataset_type", "dataset_type"),
     )
 
     def __repr__(self):
-        return (
-            f"<UserTable(username='{self.username}', table_name='{self.table_name}')>"
-        )
+        return f"<Dataset(dataset_id='{self.dataset_id}', dataset_name='{self.dataset_name}', dataset_description='{self.dataset_description}', user_id='{self.user_id}', dataset_type='{self.dataset_type}')>"
 
-class ModelTable(Base):
-    # TODO: Implement model table in DB
-    pass
+
+class TFModels(Base):
+    """ Model for storing model information
+
+    Attributes:
+        model_id (str): Unique identifier for the model
+        model_name (str): Name of the model
+        model_description (str): Description of the model
+        created_at (datetime): Date and time when the model was created
+        updated_at (datetime): Date and time when the model was last updated
+        user_id (str): User ID of the model owner
+        version (int): Version of the model
+    """
+    __tablename__ = 'tf_models'
+    
+    model_id = Column(String(255), primary_key=True, nullable=False)
+    model_name = Column(String(255), nullable=False)
+    model_description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+    user_id = Column(String(255), nullable=False)
+    version = Column(Integer, nullable=False)
+    
+    __table_args__ = (
+        UniqueConstraint('model_name', 'version', name='unique_model_name_version'),
+        Index('indx_user_id', 'user_id')
+    )

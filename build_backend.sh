@@ -4,23 +4,19 @@ IMAGE_TAG="latest"
 
 image=$IMAGE_NAME:$IMAGE_TAG
 
-
 # Build the Docker image using the Dockerfile.backend
-docker build -t $image -f dockerfile .
-
-# Check if the build was successful
-if [ $? -eq 0 ]; then
-    echo "Docker image build successful!"
-
-    # Save the Docker image to the current folder
-    docker save -o "./images/$IMAGE_NAME-$IMAGE_TAG.tar" "$IMAGE_NAME:$IMAGE_TAG"
-    if [ $? -eq 0 ]; then
-        echo "Docker image saved successfully!"
-    else
-        echo "Failed to save Docker image."
-    fi
-
+if docker build -t $image -f dockerfile .; then
+    echo "Docker image $image built successfully"
 else
-    echo "Docker image build failed."
+    echo "Docker image $image failed to build"
+    sleep 10
+    exit 1
 fi
 
+# Save the Docker image to a tar file
+if docker save -o $IMAGE_NAME.tar $image; then
+    echo "Docker image $image saved to $IMAGE_NAME.tar"
+else
+    echo "Docker image $image failed to save to $IMAGE_NAME.tar"
+    exit 1
+fi

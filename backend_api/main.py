@@ -22,7 +22,7 @@ from .backend.dependencies import (
 from .routers import users, internal, data_router, models_router
 
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger("backend_api")
+logger = logging.getLogger("Main")
 
 
 app = FastAPI(title="AIaaS API", version="0.1.0")
