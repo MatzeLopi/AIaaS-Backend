@@ -1,14 +1,41 @@
 """ Infer Schema from CSV file. """
 
 import logging
+from pathlib import Path
+from uuid import uuid4
+
+import aiofiles
 import polars as pl
 from polars.datatypes import DataType
 from fastapi import UploadFile
 
-from ..constants import LOGLEVEL
+from ..constants import LOGLEVEL, UPLOAD_FILE_DIR
 
 logging.basicConfig(level=LOGLEVEL)
 logger = logging.getLogger(__name__)
+
+
+async def save_upload_file(upload_file: UploadFile) -> Path:
+    """Save an uploaded file to a temporary file.
+
+    Args:
+        upload_file (UploadFile): File to save.
+
+    Returns:
+        Path: Path to the saved file.
+    """
+    dir_path = Path(UPLOAD_FILE_DIR)
+    suffix = Path(upload_file.filename).suffix
+    file_name = str(uuid4().hex) + str(suffix)
+    file_path = dir_path / file_name
+
+    async with aiofiles.open(file_path, "wb+") as out_file:
+        while content := await upload_file.read(2048):  # async read chunk
+            await out_file.write(content)
+    await upload_file.close()
+    logger.debug(f"File saved to: {file_path}")
+
+    return file_path
 
 
 def infer_schema(

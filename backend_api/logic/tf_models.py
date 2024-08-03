@@ -11,7 +11,7 @@ from tensorflow import keras
 from pathlib import Path
 from rapidjson import dumps
 
-from ..constants import MODEL_DIR, TF_ENABLE_ONEDNN_OPTS, LOGLEVEL
+from ..constants import MODEL_DIR, LOGLEVEL
 
 logging.basicConfig(level=LOGLEVEL)
 logger = logging.getLogger(__name__)
