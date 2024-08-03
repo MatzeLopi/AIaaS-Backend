@@ -98,10 +98,10 @@ class DatasetInDB(DatasetBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
-class ModelBase(BaseModel):
+class TFBase(BaseModel):
     """Base schema for model output to users.
 
     Attributes:
@@ -110,15 +110,15 @@ class ModelBase(BaseModel):
         version (int): Version of the model.
     """
 
-    model_name: str = Field(..., max_length=255)
-    model_description: Optional[str]
+    tf_name: str = Field(..., max_length=255)
+    tf_description: Optional[str]
     version: int
 
     class Config:
         from_attributes = True
 
 
-class ModelInDB(ModelBase):
+class TFInDB(TFBase):
     """Schema for model stored in the database.
 
     Attributes:
@@ -129,10 +129,10 @@ class ModelInDB(ModelBase):
 
     """
 
-    model_id: str = Field(..., max_length=255)
-    user_id = Field(..., max_length=255)
+    tf_id: str = Field(..., max_length=255)
+    user_id: str = Field(..., max_length=255)
     created_at: datetime
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True

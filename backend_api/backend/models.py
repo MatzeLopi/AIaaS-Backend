@@ -8,7 +8,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Index,
     Integer,
-    Text
+    Text,
 )
 
 
@@ -87,6 +87,7 @@ class Datasets(Base):
     user_id = Column(String(255), nullable=False)
     dataset_type = Column(String(255), nullable=False)
     version = Column(Integer, nullable=False)
+    dataset_path = Column(String(255), nullable=False)
 
     __table_args__ = (
         UniqueConstraint("dataset_name", name="unique_dataset_name"),
@@ -99,28 +100,32 @@ class Datasets(Base):
 
 
 class TFModels(Base):
-    """ Model for storing model information
+    """Model for storing model information
 
     Attributes:
-        model_id (str): Unique identifier for the model
-        model_name (str): Name of the model
-        model_description (str): Description of the model
+        tf_id (str): Unique identifier for the model
+        tf_name (str): Name of the model
+        tf_description (str): Description of the model
         created_at (datetime): Date and time when the model was created
         updated_at (datetime): Date and time when the model was last updated
         user_id (str): User ID of the model owner
         version (int): Version of the model
     """
-    __tablename__ = 'tf_models'
-    
-    model_id = Column(String(255), primary_key=True, nullable=False)
-    model_name = Column(String(255), nullable=False)
-    model_description = Column(Text, nullable=True)
+
+    __tablename__ = "tf_models"
+
+    tf_id = Column(String(255), primary_key=True, nullable=False)
+    tf_name = Column(String(255), nullable=False)
+    tf_description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.now, onupdate=datetime.now, nullable=False
+    )
     user_id = Column(String(255), nullable=False)
     version = Column(Integer, nullable=False)
-    
+    model_path = Column(String(255), nullable=False)
+
     __table_args__ = (
-        UniqueConstraint('model_name', 'version', name='unique_model_name_version'),
-        Index('indx_user_id', 'user_id')
+        UniqueConstraint("tf_id", "version", name="unique_model_name_version"),
+        Index("indx_user_id", "user_id"),
     )

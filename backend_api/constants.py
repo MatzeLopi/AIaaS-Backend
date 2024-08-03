@@ -9,7 +9,6 @@ ALGORITHM = "HS256"
 UPLOAD_FILE_DIR = r"/temp/uploaded_files"  # Directory for uploaded files.
 MODEL_DIR = r"/models"  # Directory for storing models.
 CHUNK_SIZE = 1  # Chunk size for reading files in Rows.
-TF_ENABLE_ONEDNN_OPTS = 0  # Enable OneDNN optimizations for TensorFlow.
 
 
 class DBError(Exception):
