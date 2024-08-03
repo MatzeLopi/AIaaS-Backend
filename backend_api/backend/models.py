@@ -112,15 +112,15 @@ class TFModels(Base):
     """
     __tablename__ = 'tf_models'
     
-    model_id = Column(String(255), primary_key=True, nullable=False)
-    model_name = Column(String(255), nullable=False)
-    model_description = Column(Text, nullable=True)
+    tf_id = Column(String(255), primary_key=True, nullable=False)
+    tf_name = Column(String(255), nullable=False)
+    tf_description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
     user_id = Column(String(255), nullable=False)
     version = Column(Integer, nullable=False)
     
     __table_args__ = (
-        UniqueConstraint('model_name', 'version', name='unique_model_name_version'),
+        UniqueConstraint('tf_id', 'version', name='unique_model_name_version'),
         Index('indx_user_id', 'user_id')
     )

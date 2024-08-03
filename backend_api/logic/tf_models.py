@@ -1,4 +1,6 @@
 import re
+import logging
+from sys import getsizeof
 from uuid import uuid4
 from typing import Any
 from enum import Enum
@@ -7,8 +9,14 @@ from inspect import signature
 import tensorflow as tf
 from tensorflow import keras
 from pathlib import Path
+from rapidjson import dumps
 
-from ..constants import MODEL_DIR, TF_ENABLE_ONEDNN_OPTS
+from ..constants import MODEL_DIR, TF_ENABLE_ONEDNN_OPTS, LOGLEVEL
+
+logging.basicConfig(level=LOGLEVEL)
+logger = logging.getLogger(__name__)
+
+available_layers = None
 
 
 class LayerJSONError(Exception):
@@ -17,9 +25,9 @@ class LayerJSONError(Exception):
 
 class LayerType(Enum):
     activation = keras.layers.Activation
-    activation_regularizer = keras.layers.ActivationRegularizer
+    activation_regularization = keras.layers.ActivityRegularization
     add = keras.layers.Add
-    addaptive_attention = keras.layers.AddaptiveAttention
+    additive_attention = keras.layers.AdditiveAttention
     alpha_dropout = keras.layers.AlphaDropout
     attention = keras.layers.Attention
     average = keras.layers.Average
@@ -28,7 +36,7 @@ class LayerType(Enum):
     average_pooling_3d = keras.layers.AveragePooling3D
     batch_normalization = keras.layers.BatchNormalization
     bidirectional = keras.layers.Bidirectional
-    catecorical_encoding = keras.layers.CategoricalEncoding
+    catecory_encoding = keras.layers.CategoryEncoding
     center_crop = keras.layers.CenterCrop
     concatenate = keras.layers.Concatenate
     conv_1d = keras.layers.Conv1D
@@ -47,14 +55,91 @@ class LayerType(Enum):
     depthwise_conv_1d = keras.layers.DepthwiseConv1D
     depthwise_conv_2d = keras.layers.DepthwiseConv2D
     discretization = keras.layers.Discretization
+    dot = keras.layers.Dot
+    dropout = keras.layers.Dropout
+    elu = keras.layers.ELU
+    einsum_dense = keras.layers.EinsumDense
+    embedding = keras.layers.Embedding
+    flatten = keras.layers.Flatten
+    flax_layer = keras.layers.FlaxLayer
+    gru = keras.layers.GRU
+    gru_cell = keras.layers.GRUCell
+    gaussian_dropout = keras.layers.GaussianDropout
+    gaussian_noise = keras.layers.GaussianNoise
+    global_average_pooling_1d = keras.layers.GlobalAveragePooling1D
+    global_average_pooling_2d = keras.layers.GlobalAveragePooling2D
+    global_average_pooling_3d = keras.layers.GlobalAveragePooling3D
+    global_max_pooling_1d = keras.layers.GlobalMaxPooling1D
+    global_max_pooling_2d = keras.layers.GlobalMaxPooling2D
+    global_max_pooling_3d = keras.layers.GlobalMaxPooling3D
+    group_normalization = keras.layers.GroupNormalization
+    group_query_attention = keras.layers.GroupNormalization
+    hashed_crossing = keras.layers.HashedCrossing
+    hashing = keras.layers.Hashing
+    identity = keras.layers.Identity
+    input_layer = keras.layers.InputLayer
+    integer_lookup = keras.layers.IntegerLookup
+    jax_layer = keras.layers.JaxLayer
+    lstm = keras.layers.LSTM
+    lstm_cell = keras.layers.LSTMCell
+    lambda_layer = keras.layers.Lambda
+    layer_normalization = keras.layers.LayerNormalization
+    leaky_relu = keras.layers.LeakyReLU
+    masking = keras.layers.Masking
+    max_pool_1d = keras.layers.MaxPool1D
+    max_pool_2d = keras.layers.MaxPool2D
+    max_pool_3d = keras.layers.MaxPool3D
+    maximum = keras.layers.Maximum
+    mel_spectrogram = keras.layers.MelSpectrogram
+    minimum = keras.layers.Minimum
+    multi_head_attention = keras.layers.MultiHeadAttention
+    multiply = keras.layers.Multiply
+    normalization = keras.layers.Normalization
+    p_relu = keras.layers.PReLU
+    permute = keras.layers.Permute
+    rnn = keras.layers.RNN
+    random_brightness = keras.layers.RandomBrightness
+    random_contrast = keras.layers.RandomContrast
+    random_crop = keras.layers.RandomCrop
+    random_flip = keras.layers.RandomFlip
+    random_height = keras.layers.RandomHeight
+    random_rotation = keras.layers.RandomRotation
+    random_translation = keras.layers.RandomTranslation
+    random_width = keras.layers.RandomWidth
+    random_zoom = keras.layers.RandomZoom
+    relu = keras.layers.ReLU
+    repeat_vector = keras.layers.RepeatVector
+    rescaling = keras.layers.Rescaling
+    reshape = keras.layers.Reshape
+    resizing = keras.layers.Resizing
+    separable_conv_1d = keras.layers.SeparableConv1D
+    separable_conv_2d = keras.layers.SeparableConv2D
+    simple_rnn = keras.layers.SimpleRNN
+    simple_rnn_cell = keras.layers.SimpleRNNCell
+    softmax = keras.layers.Softmax
+    spatial_dropout_1d = keras.layers.SpatialDropout1D
+    spatial_dropout_2d = keras.layers.SpatialDropout2D
+    spatial_dropout_3d = keras.layers.SpatialDropout3D
+    spectral_normalization = keras.layers.SpectralNormalization
+    stacked_rnn_cells = keras.layers.StackedRNNCells
+    string_lookup = keras.layers.StringLookup
+    subtract = keras.layers.Subtract
+    tfsm_layer = keras.layers.TFSMLayer
+    text_vectorization = keras.layers.TextVectorization
+    thresholded_relu = keras.layers.ThresholdedReLU
+    time_distributed = keras.layers.TimeDistributed
+    torch_module_wrapper = keras.layers.TorchModuleWrapper
+    unit_norm = keras.layers.UnitNormalization
+    up_sampling_1d = keras.layers.UpSampling1D
+    up_sampling_2d = keras.layers.UpSampling2D
+    up_sampling_3d = keras.layers.UpSampling3D
+    wrapper = keras.layers.Wrapper
+    zero_padding_1d = keras.layers.ZeroPadding1D
+    zero_padding_2d = keras.layers.ZeroPadding2D
+    zero_padding_3d = keras.layers.ZeroPadding3D
 
 
-
-class Layer:
-    pass
-
-
-def parse_docstring(docstring: str, arg_list: list[str]) -> dict:
+def parse_docstring(docstring: str | None, arg_list: list[str]) -> dict:
     """
     Parses a docstring into a dictionary with argument names as keys and their descriptions as values.
 
@@ -73,6 +158,8 @@ def parse_docstring(docstring: str, arg_list: list[str]) -> dict:
     current_arg = None
 
     # Iterate over each line in the docstring
+    if docstring is None:
+        return {}
     for line in docstring.split("\n"):
         # Check for a match with the argument pattern
         match = arg_pattern.match(line)
@@ -133,32 +220,38 @@ def get_arg_type(docstring: str) -> str:
     """
     lower_doc = docstring.lower()
     if " int" in lower_doc or lower_doc.startswith("int"):
-        return int
+        return str(int)
     elif " str" in lower_doc or lower_doc.startswith("str"):
-        return str
+        return "str"
     elif " float" in lower_doc or lower_doc.startswith("float"):
-        return float
+        return str(float)
     elif (
         " bool" in lower_doc
         or "true" in lower_doc
         or "false" in lower_doc
         or lower_doc.startswith("bool")
     ):
-        return bool
+        return str(bool)
     elif " list" in lower_doc or lower_doc.startswith("list"):
-        return list
+        return str(list)
     elif " dict" in lower_doc or lower_doc.startswith("dict"):
-        return dict
+        return str(dict)
     else:
         return "Unknown"
 
 
-def get_layers() -> dict[str[dict[str, dict[str, str]]]]:
+def get_layers():
     """Returns a dictionary of all the layers available with their arguments and keyword arguments.
 
     Returns:
         dict[str[dict[str, dict[str, str]]]]: Dictionary containing the layers and their arguments.
     """
+    logger.debug("Getting available layers.")
+    global available_layers
+    if available_layers:
+        logger.debug(f"Size of cached layers: {getsizeof(available_layers)} bytes.")
+        return available_layers
+
     layers = {}
 
     for layer in LayerType:
@@ -166,19 +259,30 @@ def get_layers() -> dict[str[dict[str, dict[str, str]]]]:
         sig = signature(tf_layer)
         params = set(sig.parameters.keys())
         args, kwargs = get_args_kwargs(sig)
+        args_dict = {}
+        kwargs_dict = {}
 
         layer_docstring: str = tf_layer.__doc__
-        docstring_dict: dict[str, str] = parse_docstring(layer_docstring, params)
-        docstring_dict: dict[str, dict[str, str]] = {
-            arg: {"doc": doc, "type": get_arg_type(doc)}
-            for arg, doc in docstring_dict.items()
-        }
+        try:
+            docstring_dict: dict[str, str] = parse_docstring(layer_docstring, params)
+        except Exception as e:
+            logger.error(f"Error parsing docstring for layer {layer.name}: {e}")
 
-        args_dict = {arg: docstring_dict.get(arg) for arg in args if arg != "kwargs"}
-        kwargs_dict = {kwarg: docstring_dict.get(kwarg) for kwarg in kwargs}
+        else:
+            docstring_dict: dict[str, dict[str, str]] = {
+                arg: {"doc": doc, "type": get_arg_type(doc)}
+                for arg, doc in docstring_dict.items()
+            }
+
+            args_dict = {
+                arg: docstring_dict.get(arg) for arg in args if arg != "kwargs"
+            }
+            kwargs_dict = {kwarg: docstring_dict.get(kwarg) for kwarg in kwargs}
 
         layers[layer.name] = {"args": args_dict, "kwargs": kwargs_dict}
 
+    available_layers = layers
+    logger.debug(f"Layers cached. Size: {getsizeof(available_layers)} bytes.")
     return layers
 
 
