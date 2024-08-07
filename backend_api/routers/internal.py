@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 # Custom imports
 from ..backend import crud, schemas
 from ..backend.dependencies import get_db, verify_internal
-from ..constants import DBError
 
 logger = logging.getLogger(__name__)
 

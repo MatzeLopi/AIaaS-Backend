@@ -5,13 +5,12 @@ import logging
 from fastapi import BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import EmailStr
 
 from .. import models, schemas
 from ..utils import get_password_hash, generate_verification_token, send_email, retry
-from ...constants import DBError 
+
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +116,7 @@ async def create_user(db: Session, user: schemas.UserCreate, bg_task: Background
     except Exception as e:
         await db.rollback()
         logger.error(f"Could not create user: {e}")
-        raise DBError("Could not create user in the database")
+        raise ValueError("Could not create user")
     else:
         return db_user
 
@@ -146,7 +145,7 @@ async def delete_user(db: AsyncSession, username: str) -> models.User:
             await db.commit()
         except Exception as e:
             logger.error(f"Could not delete user: {e}")
-            raise DBError("Could not delete user from the database")
+            raise ValueError("Could not delete user")
         else:
             return user
 
@@ -180,6 +179,6 @@ async def verify_email(db: AsyncSession, token: str) -> models.User:
             await db.refresh(user)
         except Exception as e:
             logger.error(f"Could not verify email: {e}")
-            raise DBError("Could not verify email")
+            raise ValueError("Could not verify email")
         else:
             return user

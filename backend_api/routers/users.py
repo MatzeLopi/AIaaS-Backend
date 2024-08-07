@@ -15,7 +15,7 @@ from ..constants import ACCESS_TOKEN_EXPIRE_MINUTES
 from ..backend import schemas
 from ..backend.crud import users
 from ..backend import dependencies
-from ..backend.dependencies import Token, get_db
+from ..backend.dependencies import Token, get_db, USER_DEPENDENCY
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +55,7 @@ async def verify_email(verify_token: str, db: Session = Depends(get_db)) -> Toke
 
 @router.get("/me/", response_model=schemas.UserBase)
 async def read_users_me(
-    current_user: Annotated[
-        schemas.UserBase, Depends(dependencies.get_current_active_user)
-    ],
+    current_user: USER_DEPENDENCY,
 ):
     return current_user
 
@@ -65,8 +63,8 @@ async def read_users_me(
 @router.delete("/delete", response_model=schemas.UserBase)
 async def delete_user(
     password: str,
+    current_user: USER_DEPENDENCY,
     db: Session = Depends(get_db),
-    current_user: str = Depends(dependencies.get_current_active_user),
 ):
     """Function to delete a user from the database
 
