@@ -101,7 +101,9 @@ async def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-async def authenticate_user(username: str, password: str, db: AsyncSession) -> models.User:
+async def authenticate_user(
+    username: str, password: str, db: AsyncSession
+) -> models.User:
     """Authenticate the user.
 
     Args:
@@ -123,7 +125,7 @@ async def authenticate_user(username: str, password: str, db: AsyncSession) -> m
     )
 
     logger.debug(f"Authenticating user: {username}")
-    
+
     try:
         user: models.User = await get_user(db, username)
     except ValueError:
@@ -136,7 +138,9 @@ async def authenticate_user(username: str, password: str, db: AsyncSession) -> m
     return user
 
 
-async def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+async def create_access_token(
+    data: dict, expires_delta: timedelta | None = None
+) -> str:
     """Create an access token for the user.
 
     Args:
@@ -209,8 +213,11 @@ async def get_current_active_user(
     Returns:
         User: User object if the user is active.
     """
-    
+
     if current_user.disabled:
         logger.debug(f"User {current_user.username} is inactive")
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+USER_DEPENDENCY = Annotated[schemas.UserBase, Depends(get_current_active_user)]
