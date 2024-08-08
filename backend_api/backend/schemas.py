@@ -56,8 +56,6 @@ class UserInDB(UserBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     hashed_password: str
-    subscription_expiration_date: Optional[datetime] = None
-    subscription_status: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -136,3 +134,15 @@ class TFInDB(TFBase):
 
     class Config:
         from_attributes = True
+
+
+class Organization(BaseModel):
+    pass
+
+
+class OrganizationCreate(BaseModel):
+    pass
+
+
+class OrganizationInDB(BaseModel):
+    pass

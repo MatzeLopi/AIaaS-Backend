@@ -28,7 +28,9 @@ async def get_user(db: AsyncSession, username: str) -> models.User:
     Returns:
         models.User: User from the database
     """
-    user = (await db.scalars(select(models.User).where(models.User.username == username))).first()
+    user = (
+        await db.scalars(select(models.User).where(models.User.username == username))
+    ).first()
 
     if user is None:
         logger.debug(f"User {username} not found")
@@ -52,7 +54,9 @@ async def get_user_by_mail(db: AsyncSession, email: EmailStr) -> models.User:
         models.User: User from the database
 
     """
-    user = (await db.scalars(select(models.User).where(models.User.email == email))).first()
+    user = (
+        await db.scalars(select(models.User).where(models.User.email == email))
+    ).first()
 
     if user is None:
         logger.debug(f"User with email {email} not found")
@@ -63,7 +67,9 @@ async def get_user_by_mail(db: AsyncSession, email: EmailStr) -> models.User:
         return user
 
 
-async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100) -> list[models.User]:
+async def get_users(
+    db: AsyncSession, skip: int = 0, limit: int = 100
+) -> list[models.User]:
     """Get all users from the DB
 
     Args:
@@ -138,7 +144,7 @@ async def delete_user(db: AsyncSession, username: str) -> models.User:
 
     if user is None:
         raise ValueError(f"User {username} not found")
-    
+
     else:
         try:
             db.delete(user)
@@ -163,14 +169,18 @@ async def verify_email(db: AsyncSession, token: str) -> models.User:
     Returns:
         User: User object
     """
-    user = (await db.scalars(select(models.User).where(models.User.verification_token == token))).first()
+    user = (
+        await db.scalars(
+            select(models.User).where(models.User.verification_token == token)
+        )
+    ).first()
 
     if user is None:
         raise ValueError("Invalid verification token")
-    
+
     elif user.email_verified:
         return user
-    
+
     else:
         user.email_verified = True
         user.verification_token = None
@@ -182,3 +192,19 @@ async def verify_email(db: AsyncSession, token: str) -> models.User:
             raise ValueError("Could not verify email")
         else:
             return user
+
+
+async def add_user_organization(
+    db: AsyncSession, user: schemas.UserBase, organization: schemas.OrganizationCreate
+) -> models.Organization:
+    pass
+
+
+async def create_organization(
+    db: AsyncSession, organization: schemas.OrganizationCreate, user: schemas.UserBase
+) -> models.Organization:
+    pass
+
+
+async def remove_user_organizaion():
+    pass
