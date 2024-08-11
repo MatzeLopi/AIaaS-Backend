@@ -1,8 +1,9 @@
 """Create, Update, Delete, Read operations for users in the database."""
 
 import logging
+from uuid import uuid4
 
-from fastapi import BackgroundTasks
+from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -194,14 +195,140 @@ async def verify_email(db: AsyncSession, token: str) -> models.User:
             return user
 
 
-async def add_user_organization(
-    db: AsyncSession, user: schemas.UserBase, organization: schemas.OrganizationCreate
+async def get_organization(
+    db: AsyncSession, organization_id: str
 ) -> models.Organization:
+    """Get an organization by ID from the DB
+
+    Args:
+        db (AsyncSession): Session object
+        organization_id (str): ID of the organization to get
+
+    Raises:
+        ValueError: If the organization is not found
+
+    Returns:
+        models.Organization: Organization from the database
+    """
+    organization = (
+        await db.scalars(
+            select(models.Organization).where(
+                models.Organization.organization_id == organization_id
+            )
+        )
+    ).first()
+
+    if organization is None:
+        logger.error(f"Organization {organization_id} not found")
+        raise ValueError(f"Organization {organization_id} not found")
+    else:
+        logger.debug(f"Organization: {organization}")
+        return organization
+
+
+async def add_permission_to_user(
+    db: AsyncSession, user: schemas.UserBase, permission_id: int
+):
     pass
 
 
+async def check_permission(
+    db: AsyncSession, user: schemas.UserBase, resource_id: int, permission_type: str
+):
+    pass
+
+
+async def add_role_to_user(db: AsyncSession, user: schemas.UserBase, role_id: int):
+    pass
+
+
+async def add_user_organization(
+    db: AsyncSession,
+    user: schemas.UserBase,
+    organization_id: str,
+    overwrite_seats: bool = False,
+) -> models.Organization:
+    """Add a user to an organization
+
+    Args:
+        db (AsyncSession): Database session
+        user (schemas.UserBase): User to add to the organization
+        organization_id (str): ID of the organization
+        overwrite_seats (bool, optional): Whether to ignore if the organization has seats left. Defaults to False.
+
+    Raises:
+        ValueError: If the user or organization is not found
+        HTTPException: If there are no seats left in the organization
+
+    Returns:
+        models.Organization: Organization object
+    """
+    # Update the foreign key in the user_roles table
+    user = await get_user(db, user.username)
+    organization = await get_organization(db, organization_id)
+
+    if organization.seats <= 0 and not overwrite_seats:
+        HTTPException(status_code=400, detail="No seats left in the organization")
+
+    user.organization_id = organization_id
+
+    if not overwrite_seats:
+        organization.seats -= 1
+    try:
+        db.add(user)
+        db.add(organization)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Could not add user to organization: {e}")
+        raise ValueError("Could not add user to organization")
+    else:
+        return organization
+
+
 async def create_organization(
-    db: AsyncSession, organization: schemas.OrganizationCreate, user: schemas.UserBase
+    db: AsyncSession, organization: schemas.OrganizationBase, user: schemas.UserBase
+) -> models.Organization:
+    """Create a new organization
+
+    Args:
+        db (AsyncSession): Database session
+        organization (schemas.OrganizationBase): Organization to create
+        user (schemas.UserBase): User creating the organization
+
+    Raises:
+        HTTPException: If the organization cannot be created
+
+    Returns:
+        models.Organization: Organization object
+    """
+    orga_id = f"orga_{uuid4().hex}"
+    organization = models.Organization(
+        organization_name=organization.organization_name,
+        organization_description=organization.organization_description,
+        organization_id=orga_id,
+        seats=0,
+        cpu_hours=0,
+        gpu_hours=0,
+    )
+
+    try:
+        db.add(organization)
+        await db.commit()
+        await db.refresh(organization)
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Could not create organization: {e}")
+        raise HTTPException(status_code=500, detail="Could not create organization")
+    else:
+        # Add current user to the organization
+        await add_user_organization(db, user, orga_id, True)
+
+        return organization
+
+
+async def delete_organization(
+    db: AsyncSession, organization_id: int
 ) -> models.Organization:
     pass
 
