@@ -4,6 +4,118 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 
+class OrganizationBase(BaseModel):
+    """Base schema for Organizations
+
+    Attributes:
+        organization_name (str): Name of the organization
+        organization_description (str): Description of the organization
+    """
+
+    organization_name: str
+    organization_description: str
+
+    class Config:
+        from_attributes = True
+
+
+class OrganizationFinances(OrganizationBase):
+    """Schema for organization finances
+
+    Inherits from OrganizationBase.
+
+    Attributes:
+        seats (int): Number of seats in the organization
+        cpu_hours (int): Number of CPU hours used by the organization
+        gpu_hours (int): Number of GPU hours used by the organization
+    """
+
+    seats: int
+    cpu_hours: int
+    gpu_hours: int
+
+    class Config:
+        from_attributes = True
+
+
+class OrganizationInDB(OrganizationFinances):
+    """Schema for organization stored in the database.
+
+    Inherits from OrganizationFinances
+
+    Attributes:
+        organization_id (str): Unique identifier for the organization
+    """
+
+    organization_id: str
+
+    class Config:
+        from_attributes = True
+
+
+class Role(BaseModel):
+    """Model for storing user roles.
+
+    Attributes:
+        role_id (int): Unique identifier for the role
+        role_name (str): Name of the role
+        role_description (str): Description of the role
+    """
+
+    role_name: str
+
+    class Config:
+        from_attributes = True
+
+
+class RoleInDB(Role):
+    """Schema for role stored in the database.
+
+    Inherits from Role.
+
+    Attributes:
+        role_id (int): Unique identifier for the role
+    """
+
+    role_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class UserRoles(BaseModel):
+    """Model for storing user roles.
+
+    Attributes:
+        user_id (int): Unique identifier for the user
+        role_id (int): Unique identifier for the role
+    """
+
+    user_id: int
+    role_id: int
+    organization_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class ResourcePermission(BaseModel):
+    """Model for storing resource permissions.
+
+    Attributes:
+        user_id (int): Unique identifier for the user
+        resource_id (int): Unique identifier for the resource
+        permission_type (str): Type of the permission
+    """
+
+    user_id: int
+    resource_id: int
+    permission_type: str
+
+    class Config:
+        from_attributes = True
+
+
 class UserBase(BaseModel):
     """Base schema for the user.
 
@@ -134,15 +246,3 @@ class TFInDB(TFBase):
 
     class Config:
         from_attributes = True
-
-
-class Organization(BaseModel):
-    pass
-
-
-class OrganizationCreate(BaseModel):
-    pass
-
-
-class OrganizationInDB(BaseModel):
-    pass

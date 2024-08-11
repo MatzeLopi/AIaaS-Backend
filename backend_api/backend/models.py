@@ -9,6 +9,8 @@ from sqlalchemy import (
     Index,
     Integer,
     Text,
+    Enum,
+    ForeignKey,
 )
 
 from sqlalchemy.orm import relationship
