@@ -18,7 +18,6 @@ class OrganizationBase(BaseModel):
     class Config:
         from_attributes = True
 
-
 class OrganizationFinances(OrganizationBase):
     """Schema for organization finances
 
@@ -168,6 +167,7 @@ class UserInDB(UserBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     hashed_password: str
+    organization_id: str
 
     class Config:
         from_attributes = True
