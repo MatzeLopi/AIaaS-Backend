@@ -52,7 +52,7 @@ class User(Base):
     verification_token = Column(String(255))
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-    organization_id = Column(Integer, ForeignKey("organizations.organization_id"))
+    organization_id = Column(String(255), ForeignKey("organizations.organization_id"))
 
     organization = relationship("Organization", back_populates="users")
     resources = relationship("ResourcePermission", back_populates="user")
@@ -144,7 +144,7 @@ class TFModels(Base):
         return f"<TFModel(tf_id='{self.tf_id}', tf_name='{self.tf_name}', tf_description='{self.tf_description}', user_id='{self.user_id}', version='{self.version}')>"
 
 
-class Organization:
+class Organization(Base):
     """Organization to which users can belong.
 
 
@@ -192,7 +192,7 @@ class ResourcePermission(Base):
     __tablename__ = "resource_permissions"
 
     permission_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"))
+    user_id = Column(String(255), ForeignKey("users.user_id"))
     resource_id = Column(String(255), nullable=False)
     permission_type = Column(
         Enum("view", "edit", name="permission_types"), nullable=False
@@ -244,9 +244,9 @@ class UserRole(Base):
     __tablename__ = "user_roles"
 
     user_role_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"))
+    user_id = Column(String(255), ForeignKey("users.user_id"))
     role_id = Column(Integer, ForeignKey("roles.role_id"))
-    organization_id = Column(Integer, ForeignKey("organizations.organization_id"))
+    organization_id = Column(String(255), ForeignKey("organizations.organization_id"))
 
     user = relationship("User", back_populates="roles")
     role = relationship("Role", back_populates="users")

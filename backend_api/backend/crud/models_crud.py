@@ -7,7 +7,7 @@ from sqlalchemy import select, func, and_
 from fastapi import HTTPException
 
 from ..schemas import UserBase, TFInDB
-from ..models import TFModels
+from ..models import TFModel
 
 logger = logging.getLogger("CRUD Models")
 
@@ -29,9 +29,9 @@ async def get_model(model_id: str, db: AsyncSession, user: UserBase) -> TFInDB:
 
     model = (
         await db.scalars(
-            select(TFModels)
-            .where(TFModels.tf_id == model_id)
-            .order_by(TFModels.version.desc())
+            select(TFModel)
+            .where(TFModel.tf_id == model_id)
+            .order_by(TFModel.version.desc())
         )
     ).first()
 
@@ -62,7 +62,7 @@ async def get_model_versions(
         list[TFInDB]: List of model objects.
     """
     models = (
-        await db.scalars(select(TFModels).where(TFModels.tf_id == model_id))
+        await db.scalars(select(TFModel).where(TFModel.tf_id == model_id))
     ).all()
     if not models:
         logger.error(f"Model {model_id} not found.")
@@ -93,8 +93,8 @@ async def get_model_version(
     """
     model = (
         await db.scalars(
-            select(TFModels).where(
-                and_(TFModels.tf_id == model_id, TFModels.version == version)
+            select(TFModel).where(
+                and_(TFModel.tf_id == model_id, TFModel.version == version)
             )
         )
     ).first()
@@ -132,7 +132,7 @@ async def save_model_to_db(
         model_in_db = await get_model(model_id, db, user)
     except HTTPException:
         logger.debug(f"Model {model_id} not found. Creating a new model.")
-        model_in_db = TFModels(
+        model_in_db = TFModel(
             model_id=model_id,
             model_name=model_name,
             description=description,
@@ -165,21 +165,21 @@ async def get_models(user: UserBase, db: AsyncSession) -> list[TFInDB]:
     """
 
     subquery = (
-        select(TFModels.tf_id, TFModels.version)
-        .group_by(TFModels.tf_id)
-        .having(TFModels.version == select(func.max(TFModels.version)))
+        select(TFModel.tf_id, TFModel.version)
+        .group_by(TFModel.tf_id)
+        .having(TFModel.version == select(func.max(TFModel.version)))
     ).subquery()
 
     query = (
-        select(TFModels)
+        select(TFModel)
         .join(
             subquery,
             and_(
-                TFModels.tf_id == subquery.c.tf_id,
-                TFModels.version == subquery.c.version,
+                TFModel.tf_id == subquery.c.tf_id,
+                TFModel.version == subquery.c.version,
             ),
         )
-        .where(TFModels.user_id == user.username)
+        .where(TFModel.user_id == user.username)
     )
 
     return (await db.scalars(query)).all()
