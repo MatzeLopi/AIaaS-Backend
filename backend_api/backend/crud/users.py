@@ -404,7 +404,7 @@ async def add_permission_to_role_in_organization(
     resource_id: str,
     permission_type: Permission,
 ) -> bool:
-    """ Add a permission to a role in an organization.
+    """Add a permission to a role in an organization.
 
     Args:
         db (AsyncSession): Database session
@@ -415,7 +415,7 @@ async def add_permission_to_role_in_organization(
 
     Returns:
         bool: True if successful
-    
+
     """
     # Check if the user has edit permission on the resource.
     await check_permission(db, user, resource_id, Permission.EDIT)
@@ -557,9 +557,9 @@ async def delete_organization(
 
     if not user.verify_password(password):
         raise HTTPException(status_code=401, detail="Unauthorized request")
-    
+
     check_permission(db, user, user.organization_id, Permission.EDIT)
-    
+
     try:
         organization = await get_organization(db, user.organization_id, user, False)
     except ValueError:

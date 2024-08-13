@@ -146,6 +146,18 @@ class UserCreate(UserBase):
 
     password: str
 
+class UserOrganization(UserBase):
+    """Schema for creating a new user.
+
+    Inherits from UserBase.
+
+    Attributes:
+
+    """
+    organization_id: str
+
+    class Config:
+        from_attributes = True
 
 class UserInDB(UserBase):
     """Schema for the user in the database.
