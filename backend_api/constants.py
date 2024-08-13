@@ -1,5 +1,19 @@
 import logging
 import os
+from enum import Enum
+
+
+class Permission(Enum):
+    """Enum for permission types.
+
+    Attributes:
+        VIEW (str): Permission type for view access.
+        EDIT (str): Permission type for edit access.
+
+    """
+
+    VIEW = "view"
+    EDIT = "edit"
 
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Expire time for the access token in minutes.
