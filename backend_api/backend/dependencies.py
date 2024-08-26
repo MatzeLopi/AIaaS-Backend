@@ -11,7 +11,6 @@ from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from asyncpg import connect
 
 from .database import sessionmanager
 from . import models, schemas

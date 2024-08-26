@@ -21,8 +21,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Expire time for the access token in minutes.
 LOGLEVEL = logging.DEBUG
 
 ALGORITHM = "HS256"
-UPLOAD_FILE_DIR = r"/temp/uploaded_files"  # Directory for uploaded files.
-MODEL_DIR = r"/models"  # Directory for storing models.
+UPLOAD_FILE_DIR = r"~/temp_upload/uploaded_files"  # Directory for uploaded files.
+MODEL_DIR = r"~/models"  # Directory for storing models.
 CHUNK_SIZE = 1  # Chunk size for reading files in Rows.
 
 
