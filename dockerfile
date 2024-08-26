@@ -1,5 +1,14 @@
 # Use an official Python runtime as a parent image
-FROM python:3.12-slim
+FROM python:3.12-slim-bullseye
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3-dev \
+    libhdf5-serial-dev \
+    hdf5-tools \
+    libhdf5-dev \
+    pkg-config
 
 # Set the working directory in the container
 WORKDIR /code

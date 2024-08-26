@@ -20,6 +20,7 @@ try:
         CONFIG = loads(data)
 except FileNotFoundError as e:
     print(f"Config file not found: {e}")
+    print(file_path)
     raise SystemExit
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

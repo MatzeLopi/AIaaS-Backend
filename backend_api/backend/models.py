@@ -109,7 +109,7 @@ class Datasets(Base):
         return f"<Dataset(dataset_id='{self.dataset_id}', dataset_name='{self.dataset_name}', dataset_description='{self.dataset_description}', user_id='{self.user_id}', dataset_type='{self.dataset_type}')>"
 
 
-class TFModels(Base):
+class TFModel(Base):
     """Model for storing model information
 
     Attributes:

@@ -1,4 +1,5 @@
 import contextlib
+from os import environ
 from typing import Any, AsyncIterator
 
 # SQLAlchemy
@@ -12,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
+DB_IP = environ.get("DATABASE_HOST", "localhost")
 DB_URL = "postgresql+asyncpg://postgres:yyyyyy@localhost:5432/AIaaS Backend"
 
 engine = create_async_engine(DB_URL)

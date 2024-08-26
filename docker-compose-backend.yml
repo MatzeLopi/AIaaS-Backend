@@ -3,6 +3,27 @@ services:
     image: backend
     ports:
       - "8000:8000"
-    extra_hosts:
-      - "database:localhost"
+    environment:
+      - DATABASE_HOST=database
     restart: always
+    networks:
+      - app-network
+
+  database:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: always
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
