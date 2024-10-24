@@ -19,7 +19,7 @@ from .backend.dependencies import (
     Token,
 )
 
-from .routers import users, internal, data_router, models_router
+from .routers import users, internal, data_router, models_router, organizations, permissions, payment
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("Main")
@@ -30,6 +30,9 @@ app.include_router(users.router)
 app.include_router(internal.router)
 app.include_router(data_router.router)
 app.include_router(models_router.router)
+app.include_router(organizations.router)
+app.include_router(permissions.router)
+app.include_router(payment.router)
 
 
 @app.post("/token")
