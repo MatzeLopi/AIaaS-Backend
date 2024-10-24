@@ -108,7 +108,7 @@ async def create_user(db: Session, user: schemas.UserCreate, bg_task: Background
     verification_token = await generate_verification_token()
 
     # Send email
-    body = f"Please verify your email by clicking on the following link: http://192.168.2.135:8000/users/verify_email/{verification_token}"
+    body = f"Please verify your email by clicking on the following link: http://127.0.0.1:8000/users/verify_email/{verification_token}"
     bg_task.add_task(send_email, user.email, body, "Verify your email")
 
     db_user = models.User(

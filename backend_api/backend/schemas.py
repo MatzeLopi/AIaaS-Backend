@@ -252,7 +252,7 @@ class TFInDB(TFBase):
     """
 
     tf_id: str = Field(..., max_length=255)
-    user_id: str = Field(..., max_length=255)
+    user_id: int
     created_at: datetime
     updated_at: datetime
 

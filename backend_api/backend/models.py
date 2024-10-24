@@ -43,7 +43,8 @@ class User(Base):
 
     __tablename__ = "users"
 
-    username = Column(String(255), primary_key=True, nullable=False)
+    username = Column(String(255), nullable=False)
+    user_id = Column(Integer, primary_key=True, autoincrement="auto")
     email = Column(String(255), unique=True)
     full_name = Column(String(255))
     disabled = Column(Boolean)
@@ -94,7 +95,7 @@ class Datasets(Base):
     updated_at = Column(
         DateTime, default=datetime.now, onupdate=datetime.now, nullable=False
     )
-    user_id = Column(String(255), nullable=False)
+    user_id = Column(Integer, nullable=False)
     dataset_type = Column(String(255), nullable=False)
     version = Column(Integer, nullable=False)
     dataset_path = Column(String(255), nullable=False)
@@ -131,7 +132,7 @@ class TFModel(Base):
     updated_at = Column(
         DateTime, default=datetime.now, onupdate=datetime.now, nullable=False
     )
-    user_id = Column(String(255), nullable=False)
+    user_id = Column(Integer, nullable=False)
     version = Column(Integer, nullable=False)
     model_path = Column(String(255), nullable=False)
 
@@ -192,7 +193,7 @@ class ResourcePermission(Base):
     __tablename__ = "resource_permissions"
 
     permission_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String(255), ForeignKey("users.user_id"))
+    user_id = Column(Integer, ForeignKey("users.user_id"))
     resource_id = Column(String(255), nullable=False)
     permission_type = Column(
         Enum("view", "edit", name="permission_types"), nullable=False
@@ -244,7 +245,7 @@ class UserRole(Base):
     __tablename__ = "user_roles"
 
     user_role_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String(255), ForeignKey("users.user_id"))
+    user_id = Column(Integer, ForeignKey("users.user_id"))
     role_id = Column(Integer, ForeignKey("roles.role_id"))
     organization_id = Column(String(255), ForeignKey("organizations.organization_id"))
 
