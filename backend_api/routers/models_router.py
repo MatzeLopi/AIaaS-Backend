@@ -22,7 +22,7 @@ router = APIRouter(
 )
 
 
-@router.post("/model")
+@router.post("/create_model")
 def create_model(
     current_user: USER_DEPENDENCY,
     model_definition: Json,
@@ -50,7 +50,7 @@ async def get_models(
     return await models_crud.get_models(current_user, db)
 
 
-@router.get("layers")
+@router.get("/layers")
 async def get_layers():
     """Get all available layers."""
     return tf_models.get_layers()
