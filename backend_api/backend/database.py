@@ -14,7 +14,13 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 
 DB_IP = environ.get("DATABASE_HOST", "localhost")
-DB_URL = "postgresql+asyncpg://postgres:yyyyyy@localhost:5432/AIaaS Backend"
+USER = environ.get("DATABASE_USER", "postgres")
+PASSWORD = environ.get("DATABASE_PASSWORD", "yyyyyy")
+DATABASE_NAME = environ.get("DATABASE_NAME", "AIaaS Backend")
+DATABASE_PORT = environ.get("DATABASE_PORT", "5432")
+DB_URL = f'postgresql+asyncpg://{USER}:{PASSWORD}@{DB_IP}:{DATABASE_PORT}/{DATABASE_NAME}'
+
+print(DB_URL)
 
 engine = create_async_engine(DB_URL)
 

@@ -9,9 +9,7 @@ This repository contains the backend of the AIaaS project. The idea is to provid
 
 ### Docker
    1. Be sure to have docker installed
-   2. Build image by running `build_backend.sh`
-   3. Start the DB.
-   4. Run image by `docker compose up`
+   2. Run `build_run.sh` to build the image and run the container
 
 ### Anaconda
    1. Be sure to have Anaconda installed

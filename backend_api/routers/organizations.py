@@ -1,8 +1,11 @@
 """ Router for organization endpoints."""
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from ..backend.dependencies import get_db, USER_DEPENDENCY
 from ..backend import dependencies
+
+from ..backend.crud import organizations
 
 router = APIRouter(
     prefix="/organizations",
@@ -12,8 +15,8 @@ router = APIRouter(
 
 
 @router.post("/organization/new")
-async def new_organization():
-    pass
+async def new_organization(name:str, id:str, user:USER_DEPENDENCY, db:AsyncSession = Depends(get_db)):
+    await organizations.create_organization(organization_id=id, organization_name=name, user=user, db=db)
 
 
 @router.post("/organization/invite")
