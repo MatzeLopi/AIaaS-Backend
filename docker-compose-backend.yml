@@ -1,6 +1,7 @@
 services:
   app:
     image: backend
+    container_name: backend
     ports:
       - "8000:8000"
     environment:

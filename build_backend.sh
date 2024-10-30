@@ -6,7 +6,7 @@ image=$IMAGE_NAME:$IMAGE_TAG
 
 docker system prune -f
 
-# Build the Docker image using the Dockerfile.backend
+# Build the Docker image using the Dockerfile
 if docker build -t $image -f dockerfile .; then
     echo "Docker image $image built successfully"
 else

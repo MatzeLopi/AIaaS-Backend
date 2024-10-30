@@ -10,3 +10,4 @@ router = APIRouter(
     tags=["permissions"],
     dependencies=[Depends(dependencies.get_current_active_user)],
 )
+
