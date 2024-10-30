@@ -4,6 +4,8 @@ IMAGE_TAG="latest"
 
 image=$IMAGE_NAME:$IMAGE_TAG
 
+docker system prune -f
+
 # Build the Docker image using the Dockerfile.backend
 if docker build -t $image -f dockerfile .; then
     echo "Docker image $image built successfully"

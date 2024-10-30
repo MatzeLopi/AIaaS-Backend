@@ -5,25 +5,29 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_HOST=database
+      - DATABASE_NAME=AIaaS_Backend
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=yyyyyy
     restart: always
     networks:
       - app-network
 
   database:
-    image: postgres:latest
+    image: postgres:16.4-alpine
+    container_name: database
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: mydatabase
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: yyyyyy
+      POSTGRES_DB: AIaaS_Backend
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - C:/Users/matze/workspaces/db_data/data:/var/lib/postgresql/data
+    restart: always
     networks:
       - app-network
-    restart: always
 
 networks:
   app-network:
     driver: bridge
-
-volumes:
-  postgres_data:
+    ipam:
+      config:
+        - subnet: "172.25.0.0/16"
