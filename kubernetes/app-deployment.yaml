@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      imagePullSecrets:
+        - name: mllogin
+      containers:
+        - name: app
+          image: matthiaslopinski/backend:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DATABASE_HOST
+            - name: DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DATABASE_NAME
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DATABASE_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: DATABASE_PASSWORD
+            - name: DATABASE_PORT
+              value: "5432"  # Provide the port here, assuming 5432 is the correct one
+
+          resources:
+            limits:
+              cpu: "500m"             # Max CPU
+              memory: "1024Mi"         # Max memory
+            requests:
+              cpu: "250m"             # Requested CPU
+              memory: "256Mi"         # Requested memory+
