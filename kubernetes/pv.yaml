@@ -11,7 +11,7 @@ spec:
   accessModes:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: manual
+  storageClassName: local-storage
   hostPath:
-    path: "C:/Users/matze/workspaces/db_data/data"  # Adjust this path for cloud environments as needed
+    path: "/run/desktop/mnt/host/c/Users/matze/workspaces/db_data/data"  # Adjust this path for cloud environments as needed
     type: Directory
