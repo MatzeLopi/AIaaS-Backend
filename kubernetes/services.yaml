@@ -17,8 +17,9 @@ metadata:
   name: database
 spec:
   type: ClusterIP
-  ports:
-    - port: 5432
-      targetPort: 5432
   selector:
-    app: database
+    app: database  # This selector matches the pods managed by the deployment
+  ports:
+    - protocol: TCP
+      port: 5432      # The port your database is exposed on
+      targetPort: 5432  # The port your database container listens to

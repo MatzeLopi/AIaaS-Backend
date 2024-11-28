@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: app
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: app
@@ -41,7 +41,7 @@ spec:
                   name: db-credentials
                   key: DATABASE_PASSWORD
             - name: DATABASE_PORT
-              value: "5432"  # Provide the port here, assuming 5432 is the correct one
+              value: "5432"  
 
           resources:
             limits:

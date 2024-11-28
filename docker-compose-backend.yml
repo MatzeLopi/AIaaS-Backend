@@ -1,6 +1,6 @@
 services:
   app:
-    image: backend
+    image: matthiaslopinski/backend:latest
     container_name: backend
     ports:
       - "8000:8000"

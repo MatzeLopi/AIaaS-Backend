@@ -4,6 +4,8 @@ metadata:
   name: database
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: database
@@ -12,10 +14,17 @@ spec:
       labels:
         app: database
     spec:
+      volumes:
+        - name: db-storage
+          persistentVolumeClaim:
+            claimName: db-pvc
+      
+      securityContext:
+          fsGroup: 999
+      
       containers:
         - name: postgres
           image: postgres:16.4-alpine
-          
           env:
             - name: POSTGRES_USER
               valueFrom:
@@ -41,7 +50,3 @@ spec:
               cpu: "250m"             # Requested CPU
               memory: "256Mi"         # Requested memory
       
-      volumes:
-        - name: db-storage
-          persistentVolumeClaim:
-            claimName: db-pvc
