@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+spec:
+  type: NodePort
+  ports:
+    - port: 8000
+      targetPort: 8000
+  selector:
+    app: app
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: database
+spec:
+  type: ClusterIP
+  selector:
+    app: database  # This selector matches the pods managed by the deployment
+  ports:
+    - protocol: TCP
+      port: 5432      # The port your database is exposed on
+      targetPort: 5432  # The port your database container listens to

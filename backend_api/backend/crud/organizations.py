@@ -89,7 +89,7 @@ async def create_organization(organization_id: str, db: AsyncSession, user: User
     try:
         organization = Organization(
             organization_id=organization_id,
-            user_id=user.username,
+            user_id=user.user_id,
             seats=1,
             gpu_hours=0,
             cpu_hours=0,
@@ -121,7 +121,7 @@ async def get_organization_me(user: UserBase, db: AsyncSession) -> OrganizationB
     ).first()
 
     if organization is None:
-        logger.error(f"Organization for user {user.username} not found.")
+        logger.error(f"Organization for user {user.user_id} not found.")
         raise HTTPException(status_code=404, detail="Organization not found.")
     else:
         return organization

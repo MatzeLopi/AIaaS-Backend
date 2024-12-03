@@ -36,9 +36,9 @@ async def get_dataset(db: AsyncSession, dataset_id: str, user: schemas.UserBase)
     if dataset is None:
         logger.error(f"Dataset {dataset_id} not found.")
         raise HTTPException(status_code=404, detail="Dataset not found.")
-    elif dataset.user_id != user.username:
+    elif dataset.user_id != user.user_id:
         logger.error(
-            f"Unauthorized request for dataset {dataset_id} from {user.username}."
+            f"Unauthorized request for dataset {dataset_id} from {user.user_id}."
         )
         raise HTTPException(status_code=401, detail="Unauthorized request.")
     else:
@@ -74,7 +74,7 @@ async def save_dataset_to_db(
             dataset_id=dataset_id,
             dataset_name=dataset_name,
             dataset_description=description,
-            user_id=user.username,
+            user_id=user.user_id,
             dataset_type=dataset_type,
             version=1,
             dataset_path=str(dataset_path),
@@ -123,7 +123,7 @@ async def get_available_datasets(db: AsyncSession, user: schemas.UserBase):
                 models.Datasets.version == subquery.c.version,
             ),
         )
-        .where(models.Datasets.user_id == user.username)
+        .where(models.Datasets.user_id == user.user_id)
     )
 
     datasets = (await db.execute(query)).all()
@@ -159,9 +159,9 @@ async def get_dataset_version(
     if dataset is None:
         logger.error(f"Dataset {dataset_id} not found.")
         raise HTTPException(status_code=404, detail="Dataset not found.")
-    elif dataset.user_id != user.username:
+    elif dataset.user_id != user.user_id:
         logger.error(
-            f"Unauthorized request for dataset {dataset_id} from {user.username}."
+            f"Unauthorized request for dataset {dataset_id} from {user.user_id}."
         )
         raise HTTPException(status_code=401, detail="Unauthorized request.")
     else:
@@ -188,9 +188,9 @@ async def get_dataset_versions(db: AsyncSession, dataset_id, user: schemas.UserB
     if not dataset:
         logger.error(f"Dataset {dataset_id} not found.")
         raise HTTPException(status_code=404, detail="Dataset not found.")
-    elif dataset[0].user_id != user.username:
+    elif dataset[0].user_id != user.user_id:
         logger.error(
-            f"Unauthorized request for dataset {dataset_id} from {user.username}."
+            f"Unauthorized request for dataset {dataset_id} from {user.user_id}."
         )
         raise HTTPException(status_code=401, detail="Unauthorized request.")
     else:
